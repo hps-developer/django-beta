@@ -2,9 +2,11 @@ from django.contrib import admin
 
 # Register your models here.
 
-from .models import UmoneyReq
+from .models import TopupReq
+from .models import ConnectionReq
 
-admin.site.register(UmoneyReq)
+admin.site.register(TopupReq)
+admin.site.register(ConnectionReq)
 
 # class UmoneyReqList(generics.ListCreateAPIView):
 #     queryset = UmoneyReq.objects.all()

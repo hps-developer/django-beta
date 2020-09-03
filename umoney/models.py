@@ -1,7 +1,14 @@
 from django.db import models
 
 # Create your models here.
-class UmoneyReq(models.Model):
+
+class ConnectionReq(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    pos_id = models.CharField(max_length=64, blank=True, default='')
+    terminal_id = models.CharField(max_length=64, blank=True, default='')
+    authentication_id = models.CharField(max_length=64, blank=True, default='')
+
+class TopupReq(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     card_number = models.CharField(max_length=16, blank=True, default='')
     card_algorithm_id = models.CharField(max_length=2, blank=True, default='')

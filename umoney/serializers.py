@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from umoney.models import UmoneyReq
+from umoney.models import TopupReq, ConnectionReq
 
 
 # class SnippetSerializer(serializers.Serializer):
@@ -32,9 +32,9 @@ from umoney.models import UmoneyReq
     #     instance.save()
     #     return instance
 
-class UmoneyReqSerializer(serializers.ModelSerializer):
+class TopupReqSerializer(serializers.ModelSerializer):
     class Meta:
-        model = UmoneyReq
+        model = TopupReq
         fields = [
             'id', 
             'card_number', 
@@ -47,4 +47,15 @@ class UmoneyReqSerializer(serializers.ModelSerializer):
             'sign1',
             'comment',
             'created'
+            ]
+
+class ConnectionReqSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConnectionReq
+        fields = [
+            'id', 
+            'created', 
+            'pos_id', 
+            'terminal_id', 
+            'authentication_id', 
             ]
