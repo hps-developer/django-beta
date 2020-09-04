@@ -3,10 +3,13 @@ from django.shortcuts import render
 # Create your views here.
 from rest_framework import mixins
 from rest_framework import generics
-from umoney.models import TopupReq, ConnectionReq
-from umoney.serializers import TopupReqSerializer, ConnectionReqSerializer
+from rest_framework.response import Response
+from umoney.models import TopupReq, ConnectionReq, ConnectionResp
+from umoney.serializers import TopupReqSerializer, ConnectionReqSerializer, ConnectionRespSerializer
 import socket
 import functools
+
+master_key = '30313233343536373839414243444546'
 
 stx_hex = '02'
 message_length = '0219'
@@ -15,6 +18,327 @@ source_info = 'POS0'
 version = '00'
 message_data = ''
 etx_hex = '03'
+
+message_request_data = 'ID1234ID1234ID1222                                                                                                              '    
+pos_id = 'ID1234ID1234ID1222'
+merchant_information = '3010002014                              ' 
+authentication_id = '197AFA642645A992'
+  
+
+OID_response_len_arr = {
+    'stx': 0,
+    'message_length': 4,
+    'routing_destination_info': 8,
+    'routing_source_info': 12,
+    'routing_version': 14,
+    'message_type_id': 18,
+    'primary_bit_map': 34,
+    'processing_code': 40,
+    'transmission_datetime': 50,
+    'time_local': 56,
+    'date_local': 60,
+    'transaction_uniq': 72,
+    'response_code': 74,
+    'merchant_id': 89,
+    'merchant_info': 129,
+    'result_message_len': 132,
+    'result_message_data': 196,
+    'response_data_len': 199,
+    'encrypted_wk': 231,
+    'min_topup_amount': 241,
+    'tcp_addr1': 305,
+    'tcp_port1': 311,
+    'tcp_addr2': 375,
+    'tcp_port2': 381,
+    'merchant_name': 531,
+    'system_datetime': 545,
+    'filler_space': 711,
+    'etx': 712}
+
+PDA_response_len_arr = {
+    'stx': 0,
+    'message_length': 4,
+    'routing_destination_info': 8,
+    'routing_source_info': 12,
+    'routing_version': 14,
+    'message_type_id': 18,
+    'primary_bit_map': 34,
+    'processing_code': 40,
+    'transmission_datetime': 50,
+    'time_local': 56,
+    'date_local': 60,
+    'transaction_uniq': 72,
+    'response_code': 74,
+    'merchant_id': 89,
+    'merchant_info': 129,
+    'result_message_len': 132,
+    'result_message_data': 196,
+    'response_data_len': 199,
+    'encrypted_vsam': 231,
+    'filler_space': 327,
+    'etx': 328
+}
+
+class UmoneyReqList(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.GenericAPIView):
+
+    queryset = TopupReq.objects.all()
+    serializer_class = TopupReqSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        obj = self.create(request, *args, **kwargs)
+        return obj
+
+class UmoneyReqDetail(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    generics.GenericAPIView):
+
+    queryset = TopupReq.objects.all()
+    serializer_class = TopupReqSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
+class ConnectionReqList(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.GenericAPIView):
+
+    queryset = ConnectionReq.objects.all()
+    serializer_class = ConnectionReqSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        message_type_id = '0300'
+        primary_bit_map = '2200000008200010'
+        processing_code = '481100'
+        transaction_unique = '000000000001'
+        req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 1)
+        data = send_socket_receive_data(req_data)
+        resp_data = data_to_array_by_type(OID_response_len_arr, data)
+        encrypted_wk = resp_data['encrypted_wk']
+        res = decrypt_seed128(transaction_unique + merchant_information[6:10], encrypted_wk, master_key)
+        decrypted_wk = res.decode("ascii")
+        request.data['message_type_id'] = message_type_id
+        request.data['primary_bit_map'] = primary_bit_map
+        request.data['processing_code'] = processing_code
+        request.data['merchant_information_terminal_id'] = merchant_information
+        request.data['terminal_id'] = merchant_information
+        request.data['pos_id'] = pos_id
+        request.data['transaction_unique'] = transaction_unique
+        obj = self.create(request, *args, **kwargs)
+
+        oid_resp_data = {
+            'message_type_id': resp_data['message_type_id'],
+            'primary_bit_map': resp_data['primary_bit_map'],
+            'processing_code': resp_data['processing_code'],
+            'transmission_datetime': resp_data['transmission_datetime'],
+            'transaction_unique': resp_data['transaction_uniq'],
+            'merchant_id': resp_data['merchant_id'],
+            'merchant_info_terminal_id': resp_data['merchant_info'][0:10],
+            'result_message_len': resp_data['result_message_len'],
+            'result_message_data': resp_data['result_message_data'],
+            'response_data_len': resp_data['response_data_len'],
+            'working_key': decrypted_wk,
+            'minimum_topup_amount': resp_data['min_topup_amount'],
+            'system_datetime': resp_data['system_datetime'],
+            'pos_id': pos_id, 
+            'terminal_id': merchant_information, 
+            'authentication_id': '', 
+        }
+        serializer = ConnectionRespSerializer(data=oid_resp_data)
+        if serializer.is_valid():
+            serializer.save()
+        
+        message_type_id = '0300'
+        primary_bit_map = '2200000008200010'
+        processing_code = '486000'
+        transaction_unique = '000000000002'
+        req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 2, authentication_id, decrypted_wk)
+        pda_req_data = {
+            'message_type_id': message_type_id,
+            'primary_bit_map': primary_bit_map,
+            'processing_code': processing_code,
+            'transmission_datetime': '',
+            'transaction_unique': transaction_unique,
+            'merchant_info_terminal_id': merchant_information[0:10],
+            'pos_id': pos_id, 
+            'terminal_id': merchant_information[0:10], 
+            'authentication_id': authentication_id, 
+            'vsam_id': ''
+        }
+        serializer = ConnectionReqSerializer(data=pda_req_data)
+        if serializer.is_valid():
+            serializer.save()
+
+        data = send_socket_receive_data(req_data)
+        PDA_resp_data = data_to_array_by_type(PDA_response_len_arr, data)
+
+        pda_resp_data_model = {
+            'message_type_id': PDA_resp_data['message_type_id'],
+            'primary_bit_map': PDA_resp_data['primary_bit_map'],
+            'processing_code': PDA_resp_data['processing_code'],
+            'transmission_datetime': PDA_resp_data['transmission_datetime'],
+            'transaction_unique': PDA_resp_data['transaction_uniq'],
+            'merchant_id': PDA_resp_data['merchant_id'],
+            'merchant_info_terminal_id': PDA_resp_data['merchant_info'][0:10],
+            'result_message_len': PDA_resp_data['result_message_len'],
+            'result_message_data': PDA_resp_data['result_message_data'],
+            'response_data_len': PDA_resp_data['response_data_len'],
+            'working_key': decrypted_wk,
+            'minimum_topup_amount': '',
+            'system_datetime': '',
+            'pos_id': pos_id, 
+            'terminal_id': PDA_resp_data['merchant_info'][0:10], 
+            'authentication_id': authentication_id, 
+            'vsam_id': decrypt_seed128(PDA_resp_data['transaction_uniq'] + PDA_resp_data['merchant_info'][0:10], PDA_resp_data['encrypted_vsam'], decrypted_wk).decode("ascii")
+        }
+        serializer = ConnectionRespSerializer(data=pda_resp_data_model)
+        if serializer.is_valid():
+            print('hihi')
+            serializer.save()
+        return Response({})
+
+class ConnectionReqDetail(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    generics.GenericAPIView):
+
+    queryset = ConnectionReq.objects.all()
+    serializer_class = ConnectionReqSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
+class ConnectionRespList(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.GenericAPIView):
+
+    queryset = ConnectionResp.objects.all()
+    serializer_class = ConnectionRespSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+def data_to_array_by_type(response_len_data, data):
+    resp_data = {}
+    tmp = -1
+    for k,v in response_len_data.items():
+        print(k + ": " + (data[tmp:v+1]).decode())
+        resp_data[k] = (data[tmp:v+1]).decode()
+        tmp = v+1
+    return resp_data 
+
+def decrypt_seed128(source_data, encrypted_str, mkey):
+    compile_java('decryptSEED128.java')
+    res = execute_java('decryptSEED128.java', source_data + encrypted_str + mkey, '')
+    return res
+
+def encrypt_seed128(source_data, decrypted_str, working_key):
+    compile_java('encryptSEED128.java')
+    res = execute_java('encryptSEED128.java', source_data + decrypted_str + working_key, '')
+    return res
+
+def send_socket_receive_data(req_data):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(("202.126.92.39", 12021))
+    s.send(bytes(req_data, encoding='ascii'))
+    data = ''
+    data = s.recv(4096)
+    s.close()
+    return data
+
+def prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, req_type, auth_id='', working_key=''):
+    message_request_data = 'ID1234ID1234ID1222                                                                                                              '    
+    if req_type == 1:
+        message_request_data = 'ID1234ID1234ID1222                                                                                                              '
+    elif req_type == 2:
+        # print(encrypt_seed128(transaction_unique+merchant_information[6:10], auth_id).decode("ascii")+"\n\n\n")
+        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], auth_id, working_key).decode("ascii") + "                                "
+    transmission_date = '0903100912'
+    message_request_data_length = '131'
+    
+    message_data = ''
+    message_data = message_data + message_type_id
+    message_data = message_data + primary_bit_map
+    message_data = message_data + processing_code
+    message_data = message_data + transmission_date
+    message_data = message_data + transaction_unique
+    message_data = message_data + merchant_information
+    message_data = message_data + message_request_data_length
+    message_data = message_data + message_request_data
+    print(message_data)
+    req_data = ''
+    req_data = req_data + toStr(stx_hex)
+    req_data = req_data + message_length
+    req_data = req_data + destination_info
+    req_data = req_data + source_info
+    req_data = req_data + version
+    req_data = req_data + message_data
+    req_data = req_data + toStr(etx_hex)
+    print(req_data + "\n")
+    return req_data
+
+""" 
+java compiler
+"""
+import os.path,subprocess
+from subprocess import STDOUT,PIPE
+
+def compile_java(java_file):
+    print(subprocess.check_call(['pwd']))
+    subprocess.check_call(['javac', java_file])
+
+def execute_java(java_file, data, stdin):
+    java_class,ext = os.path.splitext(java_file)
+    cmd = ['java', java_class, data]
+    proc = subprocess.Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+    stdout,stderr = proc.communicate(stdin)
+    print(stdout)
+    return stdout
+
+"""
+End java compiler
+"""
+
+
+#convert string to hex
+def toHex(s):
+    lst = []
+    for ch in s:
+        hv = hex(ord(ch)).replace('0x', '')
+        if len(hv) == 1:
+            hv = '0'+hv
+        lst.append(hv)
+    
+    return functools.reduce(lambda x,y:x+y, lst)
+
+#convert hex repr to string
+def toStr(s):
+    return s and chr(int(s[:2], base=16)) + toStr(s[2:]) or ''
 
 # @api_view(['GET', 'POST'])
 # def umoney_req_list(request, format=None):
@@ -57,300 +381,5 @@ etx_hex = '03'
 #     elif request.method == 'DELETE':
 #         snippet.delete()
 #         return Response(status=status.HTTP_204_NO_CONTENT)
-
-class UmoneyReqList(
-    mixins.ListModelMixin,
-    mixins.CreateModelMixin,
-    generics.GenericAPIView):
-
-    queryset = TopupReq.objects.all()
-    serializer_class = TopupReqSerializer
-
-    def get(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)
-
-    def post(self, request, *args, **kwargs):
-        obj = self.create(request, *args, **kwargs)
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(("www.python.org", 80))
-        print('POS0')
-        print(toHex('POS0'))
-        print(toStr('504F5330'))
-        # compile_java('encryptSEED128.java')
-        # execute_java('encryptSEED128.java', '')
-        # compile_java('decryptSEED128.java')
-        # execute_java('decryptSEED128.java', '')
-        # hex_str = toHex('POS0')
-        # hex_int = int(hex_str, 16)
-        # new_int = hex_int + 0x200
-        # print(new_int)
-        totalsent = 0
-        # while totalsent < 1000:
-        #     sent = self.sock.send(msg[totalsent:])
-        #     if sent == 0:
-        #         raise RuntimeError("socket connection broken")
-        #     totalsent = totalsent + sent
-        return obj
-
-class UmoneyReqDetail(
-    mixins.RetrieveModelMixin,
-    mixins.UpdateModelMixin,
-    mixins.DestroyModelMixin,
-    generics.GenericAPIView):
-
-    queryset = TopupReq.objects.all()
-    serializer_class = TopupReqSerializer
-
-    def get(self, request, *args, **kwargs):
-        return self.retrieve(request, *args, **kwargs)
-
-    def put(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
-
-    def delete(self, request, *args, **kwargs):
-        return self.destroy(request, *args, **kwargs)
-
-class ConnectionReqList(
-    mixins.ListModelMixin,
-    mixins.CreateModelMixin,
-    generics.GenericAPIView):
-
-    queryset = ConnectionReq.objects.all()
-    serializer_class = ConnectionReqSerializer
-
-    def get(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)
-
-    def post(self, request, *args, **kwargs):
-        message_type_id = '0300'
-        primary_bit_map = '2200000008200010'
-        processing_code = '481100'
-        transmission_date = '0902100912'
-        transaction_unique = '000000000001'
-        merchant_information = '3010002014                              ' 
-        message_request_data_length = '131'
-        message_request_data = 'ID1234ID1234ID1222                                                                                                              '
-        message_data = ''
-        message_data = message_data + message_type_id
-        message_data = message_data + primary_bit_map
-        message_data = message_data + processing_code
-        message_data = message_data + transmission_date
-        message_data = message_data + transaction_unique
-        message_data = message_data + merchant_information
-        message_data = message_data + message_request_data_length
-        message_data = message_data + message_request_data
-        print(message_data)
-        req_data = ''
-        req_data = req_data + toStr(stx_hex)
-        req_data = req_data + message_length
-        req_data = req_data + destination_info
-        req_data = req_data + source_info
-        req_data = req_data + version
-        req_data = req_data + message_data
-        req_data = req_data + toStr(etx_hex)
-        print(req_data)
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(("202.126.92.39", 12021))
-        s.send(bytes(req_data, encoding='ascii'))
-        data = ''
-        data = s.recv(4096)
-        print(data)
-        s.close()
-        obj = self.create(request, *args, **kwargs)
-        return obj
-
-class ConnectionReqDetail(
-    mixins.RetrieveModelMixin,
-    mixins.UpdateModelMixin,
-    mixins.DestroyModelMixin,
-    generics.GenericAPIView):
-
-    queryset = ConnectionReq.objects.all()
-    serializer_class = ConnectionReqSerializer
-
-    def get(self, request, *args, **kwargs):
-        return self.retrieve(request, *args, **kwargs)
-
-    def put(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
-
-    def delete(self, request, *args, **kwargs):
-        return self.destroy(request, *args, **kwargs)
-
-
-# class UmoneyReqList(generics.ListCreateAPIView):
-#     queryset = UmoneyReq.objects.all()
-#     serializer_class = UmoneyReqSerializer
-
-# class UmoneyReqDetail(generics.RetrieveUpdateDestroyAPIView):
-#     queryset = UmoneyReq.objects.all()
-#     serializer_class = UmoneyReqSerializer
-
-from cryptography.hazmat.backends.openssl.backend import backend
-from cryptography.hazmat.primitives.ciphers import algorithms, base, modes
-import urllib
-import random
-
-
-# 16바이트에 모자라면 '\x00'을 뒤에 붙침.
-def pad_to_sixteen_bytes(txt):
-    if len(txt) < 16:
-        txt += '\x00'*(16 - len(txt))
-    return txt
-
-def strip_padding(txt):
-    idx = txt.find('\x00')
-    # no padding in the first place
-    if idx == -1:
-        return txt
-    return txt[:idx]
-
-# use this for encrypting parameters. actually used in API
-def encrypt_param(key, txt):
-    txt = pad_to_sixteen_bytes(txt)
-    cipher_text = encrypt(key, txt)
-
-    encoded = [unichr(sign_byte(each)).encode('utf-8') for each in cipher_text]
-    return urllib.quote_plus(''.join(encoded))
-
-
-# use this for decrypting. actually used in APIs
-def decrypt_param(key, cipher_text):
-    cipher_text = list(urllib.unquote_plus(cipher_text).decode('utf-8'))
-    cipher_text = ''.join(map(chr, map(unsign_byte, cipher_text)))
-    return strip_padding(decrypt(key, cipher_text))
-
-# for testing purposes
-def generate_text():
-    return ''.join([random.choice('0123456789abcdefghjklmnopqrstuxyzABCDEFGHIJKLMNOPQRSTUXYZ') for i in range(16)])
-
-# for testing purposes
-def test():
-    key = '0123465789abcdef'
-    for _ in range(5):
-        txt = generate_text()
-        print(txt, encrypt_param(key, txt))
-
-# python cryptography documentation.
-# seed 128 encryption
-def encrypt(key, txt):
-    mode = modes.ECB()
-    cipher = base.Cipher(
-        algorithms.SEED(key),
-        mode,
-        backend
-    )
-    encryptor = cipher.encryptor()
-    ct = encryptor.update(txt)
-    ct += encryptor.finalize()
-    return ct
-
-# seed 128 decryption
-def decrypt(key, txt):
-    mode = modes.ECB()
-    cipher = base.Cipher(
-        algorithms.SEED(key),
-        mode,
-        backend
-    )
-    decryptor = cipher.decryptor()
-    ct = decryptor.update(txt)
-    ct += decryptor.finalize()
-    return ct
-
-# java byte = signed
-# python byte = unsigned
-# means 0x80 ~ 0xFF needs to be converted.
-# see http://stackoverflow.com/questions/4958658/char-into-byte-java
-# 65280을 더하는 이유는 ..자바에서 byte를 chr로 강제 캐스팅시 byte가 int형태로 sign_extension되고 그 뒤,
-# chr는 2바이트니 결과값의 최하위 바이트 2개를 사용.
-
-def sign_byte(me):
-    if ord(me) > 127:
-        # java casting rule. from chr to int.
-        # 65280 == '\xFF00'
-        return 65280 + ord(me)
-    else:
-        return ord(me)
-
-def unsign_byte(me):
-    if ord(me) >= 65280:
-        return ord(me) - 65280
-    else:
-        return ord(me)
-
-""" 
-java compiler
-"""
-import os.path,subprocess
-from subprocess import STDOUT,PIPE
-
-def compile_java(java_file):
-    print(subprocess.check_call(['pwd']));
-    subprocess.check_call(['javac', java_file])
-
-def execute_java(java_file, stdin):
-    java_class,ext = os.path.splitext(java_file)
-    cmd = ['java', java_class]
-    proc = subprocess.Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-    stdout,stderr = proc.communicate(stdin)
-    print (stdout )
-
-"""
-End java compiler
-"""
-
-
-#convert string to hex
-def toHex(s):
-    lst = []
-    for ch in s:
-        hv = hex(ord(ch)).replace('0x', '')
-        if len(hv) == 1:
-            hv = '0'+hv
-        lst.append(hv)
-    
-    return functools.reduce(lambda x,y:x+y, lst)
-
-#convert hex repr to string
-def toStr(s):
-    return s and chr(int(s[:2], base=16)) + toStr(s[2:]) or ''
-
-class MySocket:
-    """demonstration class only
-      - coded for clarity, not efficiency
-    """
-
-    def __init__(self, sock=None):
-        if sock is None:
-            self.sock = socket.socket(
-                            socket.AF_INET, socket.SOCK_STREAM)
-        else:
-            self.sock = sock
-
-    def connect(self, host, port):
-        self.sock.connect((host, port))
-
-    def mysend(self, msg):
-        totalsent = 0
-        while totalsent < 1000:
-            sent = self.sock.send(msg[totalsent:])
-            if sent == 0:
-                # self.sock.close()
-                raise RuntimeError("socket connection broken")
-                
-            totalsent = totalsent + sent
-
-    def myreceive(self):
-        chunks = []
-        bytes_recd = 0
-        while bytes_recd < 3000:
-            chunk = self.sock.recv(min(3000 - bytes_recd, 2048))
-            if chunk == b'':
-                raise RuntimeError("socket connection broken")
-            chunks.append(chunk)
-            bytes_recd = bytes_recd + len(chunk)
-        # self.sock.close()
-        return b''.join(chunks)
 
 

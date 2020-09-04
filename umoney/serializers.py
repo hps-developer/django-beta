@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from umoney.models import TopupReq, ConnectionReq
+from umoney.models import TopupReq, ConnectionReq, ConnectionResp
 
 
 # class SnippetSerializer(serializers.Serializer):
@@ -55,7 +55,39 @@ class ConnectionReqSerializer(serializers.ModelSerializer):
         fields = [
             'id', 
             'created', 
+            'message_type_id',
+            'primary_bit_map',
+            'processing_code',
+            'transmission_datetime',
+            'transaction_unique',
+            'merchant_info_terminal_id',
             'pos_id', 
             'terminal_id', 
             'authentication_id', 
+            'vsam_id'
+            ]
+
+class ConnectionRespSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConnectionResp
+        fields = [
+            'id', 
+            'created', 
+            'message_type_id',
+            'primary_bit_map',
+            'processing_code',
+            'transmission_datetime',
+            'transaction_unique',
+            'merchant_id',
+            'merchant_info_terminal_id',
+            'result_message_len',
+            'result_message_data',
+            'response_data_len',
+            'working_key',
+            'minimum_topup_amount',
+            'system_datetime',
+            'pos_id', 
+            'terminal_id', 
+            'authentication_id', 
+            'vsam_id'
             ]

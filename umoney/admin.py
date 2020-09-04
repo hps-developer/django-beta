@@ -4,9 +4,11 @@ from django.contrib import admin
 
 from .models import TopupReq
 from .models import ConnectionReq
+from .models import ConnectionResp
 
 admin.site.register(TopupReq)
 admin.site.register(ConnectionReq)
+admin.site.register(ConnectionResp)
 
 # class UmoneyReqList(generics.ListCreateAPIView):
 #     queryset = UmoneyReq.objects.all()

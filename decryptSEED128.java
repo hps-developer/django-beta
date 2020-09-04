@@ -502,35 +502,64 @@ public class decryptSEED128
     pdwRoundKey[nCount++] = K[0];	pdwRoundKey[nCount++] = K[1];
 	}
 
+	public static byte[] stringToBytesASCII(String str) {
+		byte[] b = new byte[str.length()];
+		for (int i = 0; i < b.length; i++) {
+			b[i] = (byte) str.charAt(i);
+		}
+		return b;
+	}
+
+	private static int hexToBin( char ch ) {
+		if( '0'<=ch && ch<='9' )    return ch-'0';
+		if( 'A'<=ch && ch<='F' )    return ch-'A'+10;
+		if( 'a'<=ch && ch<='f' )    return ch-'a'+10;
+		return -1;
+	}
+
+	private static final char[] hexCode = "0123456789ABCDEF".toCharArray();
+
+	public static byte[] parseHexBinary(String s) {
+		final int len = s.length();
+
+		// "111" is not a valid hex encoding.
+		if( len%2 != 0 )
+			throw new IllegalArgumentException("hexBinary needs to be even-length: "+s);
+
+		byte[] out = new byte[len/2];
+
+		for( int i=0; i<len; i+=2 ) {
+			int h = hexToBin(s.charAt(i  ));
+			int l = hexToBin(s.charAt(i+1));
+			if( h==-1 || l==-1 )
+				throw new IllegalArgumentException("contains illegal character for hexBinary: "+s);
+
+			out[i/2] = (byte)(h*16+l);
+		}
+
+		return out;
+	}
+
 	public static void main(String[] args)
 	{
-
-		//byte pbUserKeyX[]  = {(byte)0x30, (byte)0x31, (byte)0x32, (byte)0x33, (byte)0x34, (byte)0x35, (byte)0x36, (byte)0x37,
-		//                      (byte)0x38, (byte)0x39, (byte)0x41, (byte)0x42, (byte)0x43, (byte)0x44, (byte)0x45, (byte)0x46};
-		//byte pbDataX[]     = {(byte)0x41, (byte)0x42, (byte)0x43, (byte)0x44, (byte)0x45, (byte)0x46, (byte)0x47, (byte)0x48,
-        //                      (byte)0x49, (byte)0x4A, (byte)0x4B, (byte)0x4C, (byte)0x4D, (byte)0x4E, (byte)0x4F, (byte)0x50};
-
-		byte pbUserKeyX[]  = {(byte)0x30, (byte)0x31, (byte)0x32, (byte)0x33, (byte)0x34, (byte)0x35, (byte)0x36, (byte)0x37,
-		                      (byte)0x38, (byte)0x39, (byte)0x41, (byte)0x42, (byte)0x43, (byte)0x44, (byte)0x45, (byte)0x46};
-		/*byte pbDataX[]     = {(byte)0x24, (byte)0x8C, (byte)0xEA, (byte)0xD7, (byte)0x17, (byte)0xF6, (byte)0x92, (byte)0x06,
-                              (byte)0xCF, (byte)0x0D, (byte)0xE3, (byte)0x0E, (byte)0x6C, (byte)0xC1, (byte)0xC7, (byte)0xC2};*/
-		byte pbDataX[]     = {(byte)0x3D, (byte)0x6B, (byte)0x47, (byte)0x79, (byte)0x03, (byte)0x8E, (byte)0x8E, (byte)0xE0, 
-				(byte)0xBB, (byte)0x91, (byte)0xFF, (byte)0x04, (byte)0x59, (byte)0x02, (byte)0xF9, (byte)0x01};
-	
-		int pdwRoundKey[]  = new int[32];
-		byte pbPlainX[]    = new byte[16];
-		byte pbCipherX[]   = new byte[50];
-		
-		byte sBuffer[]     = new byte[16];
+		// System.out.println(args[0]);
+		// return;
+		// byte pbUserKeyX[]  = {(byte)0x30, (byte)0x31, (byte)0x32, (byte)0x33, (byte)0x34, (byte)0x35, (byte)0x36, (byte)0x37,
+		//                       (byte)0x38, (byte)0x39, (byte)0x41, (byte)0x42, (byte)0x43, (byte)0x44, (byte)0x45, (byte)0x46};
 		byte tBuffer[]     = new byte[16];
+		byte sBuffer[]     = new byte[16];
+		byte pbRandomValue[] = stringToBytesASCII(args[0].substring(0,16));
+		byte encryptedWKey[] = parseHexBinary(args[0].substring(16, 48));
+		byte pbUserKeyX[] = parseHexBinary(args[0].substring(48));
+		int pdwRoundKey[]  = new int[32];
 		
-		SeedRoundKey(pdwRoundKey, pbUserKeyX);
-		SeedEncrypt(pbDataX, pdwRoundKey, tBuffer);		
-		SeedDecrypt(tBuffer, pdwRoundKey, sBuffer);	
+		SeedRoundKey(pdwRoundKey, pbUserKeyX);	
+		SeedDecrypt(encryptedWKey, pdwRoundKey, sBuffer);	
 		
-		
-	    //for (int i=0; i<16; i++)	System.out.print(typeof(Integer.toHexString(0xff&tBuffer[i]).toUpperCase()));
-	    for (int i=0; i<16; i++)	System.out.print(typeof(Integer.toHexString(0xff&sBuffer[i]).toUpperCase()));
+	    for (int i=0; i<16; i++){
+			if(Integer.toHexString(0xff&(pbRandomValue[i]^sBuffer[i])).toUpperCase().length() > 1)
+				System.out.print(Integer.toHexString(0xff&(pbRandomValue[i]^sBuffer[i])).toUpperCase()) ;
+			else System.out.print("0" + Integer.toHexString(0xff&(pbRandomValue[i]^sBuffer[i])).toUpperCase());
+		}
 	}
 }
-
