@@ -1,0 +1,1 @@
+[<FBApplicationProcess: 0x10acfe9e0; application<mn.highpaymentsolutions.hipay2wallet>:6164>] Provision violated for watchdog scene-create: <FBSProcessResourceProvision: 0x280699600; allowance: <; FBSProcessResourceAllowance; type: realTime; timeValue: 19.94s>; violated: YES>

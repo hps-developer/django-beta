@@ -9,6 +9,7 @@ from umoney.serializers import TopupReqSerializer, TopupRespSerializer, Connecti
 import socket
 import functools
 from datetime import datetime
+from django.db.models import Max
 
 master_key = '30313233343536373839414243444546'
 
@@ -192,7 +193,7 @@ class TopupRespList(
     serializer_class = TopupRespSerializer
 
     def get(self, request, *args, **kwargs):
-        # create_transaction_unique()
+        create_transaction_unique()
         return self.list(request, *args, **kwargs)
 
 class ConnectionReqList(
@@ -356,17 +357,23 @@ def send_socket_receive_data(req_data):
 
 def create_transaction_unique():
     current_date = (datetime.now()).strftime('%y%m%d')
-    identifier = 0
-    num_results1 = 1
-    num_results2 = 1
-    num_results1 = ConnectionReq.objects.filter(transaction_unique = current_date+str(identifier).zfill(6)).count()
-    num_results2 = TopupReq.objects.filter(transaction_unique = current_date+str(identifier).zfill(6)).count()
-    while num_results1 + num_results2 > 0:
-        identifier += 1
-        num_results1 = ConnectionReq.objects.filter(transaction_unique = current_date+str(identifier).zfill(6)).count()
-        num_results2 = TopupReq.objects.filter(transaction_unique = current_date+str(identifier).zfill(6)).count()
-    print("********" + current_date+str(identifier).zfill(6) + "********")
-    return current_date+str(identifier).zfill(6)
+    result = current_date + '000000'
+    result1 = '000000000000'
+    result2 = '000000000000'
+    if ConnectionReq.objects.all().count() + TopupReq.objects.all().count() > 0:
+        if ConnectionReq.objects.all().count() > 0:
+            result1 = ConnectionReq.objects.aggregate(Max('transaction_unique'))['transaction_unique__max']
+        if TopupReq.objects.all().count() > 0:
+            result2 = TopupReq.objects.aggregate(Max('transaction_unique'))['transaction_unique__max']
+        tmp = ''
+        if result1 > result2:
+            tmp = result1
+        else: 
+            tmp = result2
+        result = tmp[0:6] + str(int(tmp[6:]) +1 ).zfill(6)
+    print("********" + result + "********")
+    return result
+
     
 def prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, req_type, auth_id='', working_key='', card_data = {}):
     message_request_data = 'ID1234ID1234ID1222                                                                                                              '    
