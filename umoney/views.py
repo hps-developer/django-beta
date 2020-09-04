@@ -4,10 +4,11 @@ from django.shortcuts import render
 from rest_framework import mixins
 from rest_framework import generics
 from rest_framework.response import Response
-from umoney.models import TopupReq, ConnectionReq, ConnectionResp
-from umoney.serializers import TopupReqSerializer, ConnectionReqSerializer, ConnectionRespSerializer
+from umoney.models import TopupReq, TopupResp, ConnectionReq, ConnectionResp
+from umoney.serializers import TopupReqSerializer, TopupRespSerializer, ConnectionReqSerializer, ConnectionRespSerializer
 import socket
 import functools
+from datetime import datetime
 
 master_key = '30313233343536373839414243444546'
 
@@ -53,7 +54,8 @@ OID_response_len_arr = {
     'merchant_name': 531,
     'system_datetime': 545,
     'filler_space': 711,
-    'etx': 712}
+    'etx': 712
+}
 
 PDA_response_len_arr = {
     'stx': 0,
@@ -79,6 +81,35 @@ PDA_response_len_arr = {
     'etx': 328
 }
 
+OTU_first_response_len_arr = {
+    'stx': 0,
+    'message_length': 4,
+    'routing_destination_info': 8,
+    'routing_source_info': 12,
+    'routing_version': 14,
+    'message_type_id': 18,
+    'primary_bit_map': 34,
+    'processing_code': 40,
+    'transmission_datetime': 50,
+    'time_local': 56,
+    'date_local': 60,
+    'transaction_uniq': 72,
+    'response_code': 74,
+    'merchant_id': 89,
+    'merchant_info': 129,
+    'result_message_len': 132,
+    'result_message_data': 196,
+    'response_data_len': 199,
+    'card_number': 215,
+    'vsam_tran_seq_number': 225,
+    'card_balance': 235,
+    'topup_amount': 245,
+    'sign2': 253,
+    'deposit_balance': 263,
+    'filler_space': 327,
+    'etx': 328
+}
+
 class UmoneyReqList(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
@@ -91,8 +122,48 @@ class UmoneyReqList(
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+        message_type_id = '0200'
+        primary_bit_map = '2200000008200010'
+        processing_code = '183100'
+        transaction_unique = create_transaction_unique()
+        topup_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 3, '', '', request.data)
+        print(topup_req_data.encode("ascii"))
+        data = send_socket_receive_data(topup_req_data)
+        request.data['message_type_id'] = message_type_id
+        request.data['primary_bit_map'] = primary_bit_map
+        request.data['processing_code'] = processing_code
+        request.data['transaction_unique'] = transaction_unique
+        request.data['transmission_datetime'] = topup_req_data[41:51]
+        request.data['terminal_id'] = merchant_information[0:10]
+        request.data['request_data_len'] = '131'
+
+        resp_data = data_to_array_by_type(OTU_first_response_len_arr, data)
+        OTU_first_resp_data = {
+            'comment': request.data['comment'], 
+            'message_type_id': resp_data['message_type_id'], 
+            'primary_bit_map': resp_data['primary_bit_map'], 
+            'processing_code': resp_data['processing_code'],
+            'transmission_datetime': resp_data['transmission_datetime'],
+            'transaction_unique': resp_data['transaction_uniq'],
+            'terminal_id': merchant_information[0:10],
+            'result_message_len': resp_data['result_message_len'],
+            'result_message_data': resp_data['result_message_data'],
+            'tran_type': request.data['tran_type'],
+            'card_number': resp_data['card_number'],
+            'vsam_tran_seq_num': resp_data['vsam_tran_seq_number'],
+            'card_balance': resp_data['card_balance'],
+            'topup_amount': resp_data['topup_amount'],
+            'sign2': resp_data['sign2'],
+            'deposit_balance': resp_data['deposit_balance'],
+            'payment_method': request.data['payment_method'],
+            'sign1': request.data['sign1']
+        }
+        serializer = TopupRespSerializer(data=OTU_first_resp_data)
+        if serializer.is_valid():
+            serializer.save()
+
         obj = self.create(request, *args, **kwargs)
-        return obj
+        return Response({ 'request': obj.data, 'result': serializer.data })
 
 class UmoneyReqDetail(
     mixins.RetrieveModelMixin,
@@ -112,6 +183,18 @@ class UmoneyReqDetail(
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
 
+class TopupRespList(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.GenericAPIView):
+
+    queryset = TopupResp.objects.all()
+    serializer_class = TopupRespSerializer
+
+    def get(self, request, *args, **kwargs):
+        # create_transaction_unique()
+        return self.list(request, *args, **kwargs)
+
 class ConnectionReqList(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
@@ -127,7 +210,7 @@ class ConnectionReqList(
         message_type_id = '0300'
         primary_bit_map = '2200000008200010'
         processing_code = '481100'
-        transaction_unique = '000000000001'
+        transaction_unique = create_transaction_unique()
         req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 1)
         data = send_socket_receive_data(req_data)
         resp_data = data_to_array_by_type(OID_response_len_arr, data)
@@ -168,7 +251,7 @@ class ConnectionReqList(
         message_type_id = '0300'
         primary_bit_map = '2200000008200010'
         processing_code = '486000'
-        transaction_unique = '000000000002'
+        transaction_unique = create_transaction_unique()
         req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 2, authentication_id, decrypted_wk)
         pda_req_data = {
             'message_type_id': message_type_id,
@@ -271,14 +354,43 @@ def send_socket_receive_data(req_data):
     s.close()
     return data
 
-def prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, req_type, auth_id='', working_key=''):
+def create_transaction_unique():
+    current_date = (datetime.now()).strftime('%y%m%d')
+    identifier = 0
+    num_results1 = 1
+    num_results2 = 1
+    num_results1 = ConnectionReq.objects.filter(transaction_unique = current_date+str(identifier).zfill(6)).count()
+    num_results2 = TopupReq.objects.filter(transaction_unique = current_date+str(identifier).zfill(6)).count()
+    while num_results1 + num_results2 > 0:
+        identifier += 1
+        num_results1 = ConnectionReq.objects.filter(transaction_unique = current_date+str(identifier).zfill(6)).count()
+        num_results2 = TopupReq.objects.filter(transaction_unique = current_date+str(identifier).zfill(6)).count()
+    print("********" + current_date+str(identifier).zfill(6) + "********")
+    return current_date+str(identifier).zfill(6)
+    
+def prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, req_type, auth_id='', working_key='', card_data = {}):
     message_request_data = 'ID1234ID1234ID1222                                                                                                              '    
     if req_type == 1:
         message_request_data = 'ID1234ID1234ID1222                                                                                                              '
     elif req_type == 2:
         # print(encrypt_seed128(transaction_unique+merchant_information[6:10], auth_id).decode("ascii")+"\n\n\n")
         message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], auth_id, working_key).decode("ascii") + "                                "
-    transmission_date = '0903100912'
+    elif req_type == 3:
+        message_request_data = ''
+        message_request_data = message_request_data + card_data['tran_type']
+        message_request_data = message_request_data + card_data['card_number']
+        message_request_data = message_request_data + card_data['card_algorithm_id']
+        message_request_data = message_request_data + card_data['card_keyset_v']
+        message_request_data = message_request_data + card_data['card_transaction_seq_number']
+        message_request_data = message_request_data + card_data['card_random_number']
+        message_request_data = message_request_data + card_data['card_balance']
+        message_request_data = message_request_data + card_data['topup_amount']
+        message_request_data = message_request_data + card_data['sign1']
+        message_request_data = message_request_data + card_data['payment_method']
+        message_request_data = message_request_data + '                                                   '
+        print(message_request_data + "\n")
+    transmission_date = (datetime.now()).strftime('%m%d%H%M%S')
+    print("\n\n\n\n\n" + transmission_date + "\n\n\n\n\n")
     message_request_data_length = '131'
     
     message_data = ''
@@ -290,7 +402,7 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
     message_data = message_data + merchant_information
     message_data = message_data + message_request_data_length
     message_data = message_data + message_request_data
-    print(message_data)
+    print(message_data + "\n")
     req_data = ''
     req_data = req_data + toStr(stx_hex)
     req_data = req_data + message_length

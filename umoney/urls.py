@@ -6,6 +6,7 @@ from . import views
 urlpatterns = [
     path('topup/', views.UmoneyReqList.as_view()),
     path('topup/<int:pk>/', views.UmoneyReqDetail.as_view()),
+    path('topupresp/', views.TopupRespList.as_view()),
     path('connection/', views.ConnectionReqList.as_view()),
     path('connection/<int:pk>/', views.ConnectionReqDetail.as_view()),
     path('connectionresp/', views.ConnectionRespList.as_view()),

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from umoney.models import TopupReq, ConnectionReq, ConnectionResp
+from umoney.models import TopupReq, TopupResp, ConnectionReq, ConnectionResp
 
 
 # class SnippetSerializer(serializers.Serializer):
@@ -31,6 +31,28 @@ from umoney.models import TopupReq, ConnectionReq, ConnectionResp
     #     instance.style = validated_data.get('style', instance.style)
     #     instance.save()
     #     return instance
+"""
+{
+    "card_number": "1610000007267156",
+    "card_algorithm_id": "10",
+    "card_keyset_v": "01",
+    "card_transaction_seq_number": "0000000150",
+    "card_random_number": "89E2478B4C6DB2B4",
+    "card_balance": "0000050000",
+    "topup_amount": "0000000500",
+    "sign1": "F66AA671",
+    "comment": "HI TOPUP 500 PLEASE.",
+    "tran_type": "02",
+    "payment_method": "3",
+    "message_type_id": "",
+    "primary_bit_map": "",
+    "processing_code": "",
+    "transmission_datetime": "",
+    "transaction_unique": "",
+    "terminal_id": "",
+    "request_data_len": ""
+}
+"""
 
 class TopupReqSerializer(serializers.ModelSerializer):
     class Meta:
@@ -46,7 +68,42 @@ class TopupReqSerializer(serializers.ModelSerializer):
             'topup_amount',
             'sign1',
             'comment',
-            'created'
+            'created',
+            'message_type_id',
+            'primary_bit_map',
+            'processing_code',
+            'transmission_datetime',
+            'transaction_unique',
+            'terminal_id',
+            'request_data_len',
+            'tran_type',
+            'payment_method',
+            ]
+
+class TopupRespSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TopupResp
+        fields = [
+            'id', 
+            'created', 
+            'comment', 
+            'message_type_id', 
+            'primary_bit_map', 
+            'processing_code',
+            'transmission_datetime',
+            'transaction_unique',
+            'terminal_id',
+            'result_message_len',
+            'result_message_data',
+            'tran_type',
+            'card_number',
+            'vsam_tran_seq_num',
+            'card_balance',
+            'topup_amount',
+            'sign2',
+            'deposit_balance',
+            'payment_method',
+            'sign1',
             ]
 
 class ConnectionReqSerializer(serializers.ModelSerializer):
