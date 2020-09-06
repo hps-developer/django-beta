@@ -113,7 +113,7 @@ class DepositBalanceInquiryResp(models.Model):
     transmission_datetime = models.CharField(max_length=10, blank=True, default='')
     transaction_unique = models.CharField(max_length=12, blank=True, default='')
     terminal_id = models.CharField(max_length=40, blank=True, default='')
-    pos_id = models.CharField(max_length=64, blank=True, default='')
+    pos_id = models.CharField(max_length=64, blank=True, default='ID1234ID1234ID1222')
     deposit_balance = models.CharField(max_length=32, blank=True, default='')
 
     class Meta:

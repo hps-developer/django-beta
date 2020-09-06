@@ -254,7 +254,8 @@ class ConnectionReqList(
         request.data['processing_code'] = processing_code
         request.data['merchant_information_terminal_id'] = merchant_information
         request.data['terminal_id'] = merchant_information
-        request.data['pos_id'] = pos_id
+        if request.data['pos_id'] == '':
+            request.data['pos_id'] = pos_id
         request.data['transaction_unique'] = transaction_unique
         obj = self.create(request, *args, **kwargs)
 
@@ -273,11 +274,10 @@ class ConnectionReqList(
             'working_key': decrypted_wk,
             'minimum_topup_amount': resp_data['min_topup_amount'],
             'system_datetime': resp_data['system_datetime'],
-            'pos_id': pos_id, 
+            'pos_id': request.data['pos_id'], 
             'terminal_id': merchant_information, 
             'authentication_id': '', 
         }
-        print('AAAAAAAAAAAAAAAAAAAAAAA')
         serializer = ConnectionRespSerializer(data=oid_resp_data)
         if serializer.is_valid():
             serializer.save()
@@ -385,6 +385,8 @@ class DepositBalanceInquiryReqList(
         request.data['transmission_datetime'] = deposit_inquiry_req_data[41:51]
         request.data['terminal_id'] = merchant_information[0:10]
         request.data['request_data_len'] = '131'
+        if request.data['pos_id'] == '':
+            request.data['pos_id'] = pos_id
         obj = self.create(request, *args, **kwargs)
         if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() <= 0: 
             return Response({ 'deposit_balance': '-1', 'message': 'no vsam_id found, please make connection to umoney','request': obj.data, 'result': {}}, status=status.HTTP_404_NOT_FOUND)
@@ -402,7 +404,7 @@ class DepositBalanceInquiryReqList(
             'terminal_id': merchant_information[0:10],
             'result_message_len': resp_data['result_message_len'],
             'result_message_data': resp_data['result_message_data'],
-            'pos_id': pos_id,
+            'pos_id': request.data['pos_id'],
             'deposit_balance': resp_data['deposit_balance'],
         }
         serializer = DepositBalanceInquiryRespSerializer(data=DBI_resp_data)
