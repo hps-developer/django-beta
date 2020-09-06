@@ -2,6 +2,7 @@ from rest_framework import serializers
 from umoney.models import TopupReq, TopupResp
 from umoney.models import ConnectionReq, ConnectionResp
 from umoney.models import DepositBalanceInquiryReq, DepositBalanceInquiryResp
+from umoney.models import TransactionAggregationInquiryReq, TransactionAggregationInquiryResp
 
 
 # class SnippetSerializer(serializers.Serializer):
@@ -189,4 +190,50 @@ class DepositBalanceInquiryRespSerializer(serializers.ModelSerializer):
             'terminal_id',
             'pos_id',
             'deposit_balance',
+            ]
+
+class TransactionAggregationInquiryReqSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TransactionAggregationInquiryReq
+        fields = [
+            'id', 
+            'created',
+            'comment',
+            'message_type_id',
+            'primary_bit_map',
+            'processing_code',
+            'transmission_datetime',
+            'transaction_unique',
+            'terminal_id',
+            'request_data_len',
+            'pos_id',
+            'encrypted_vsam_id',
+            'closing_gate',
+        ]
+
+class TransactionAggregationInquiryRespSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TransactionAggregationInquiryResp
+        fields = [
+            'id', 
+            'created',
+            'comment',
+            'message_type_id',
+            'primary_bit_map',
+            'response_code',
+            'result_message_len',
+            'result_message_data',
+            'processing_code',
+            'transmission_datetime',
+            'transaction_unique',
+            'terminal_id',
+            'pos_id',
+            'topup_count',
+            'topup_amount',
+            'topup_cancellation_count',
+            'topup_cancellation_amount',
+            'payment_count',
+            'payment_amount',
+            'payment_cancellation_count',
+            'payment_cancellation_amount',
             ]

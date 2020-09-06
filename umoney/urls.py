@@ -13,6 +13,9 @@ urlpatterns = [
     path('depositinquiry/', views.DepositBalanceInquiryReqList.as_view()),
     path('depositinquiry/<int:pk>/', views.DepositBalanceInquiryReqDetail.as_view()),
     path('depositinquiryresp/', views.DepositBalanceInquiryRespList.as_view()),
+    path('transactionaggregation/', views.TransactionAggregationInquiryReqList.as_view()),
+    path('transactionaggregation/<int:pk>/', views.TransactionAggregationInquiryReqDetail.as_view()),
+    path('transactionaggregationresp/', views.TransactionAggregationInquiryRespList.as_view()),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

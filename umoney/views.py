@@ -9,6 +9,8 @@ from umoney.models import TopupReq, TopupResp, ConnectionReq, ConnectionResp
 from umoney.serializers import TopupReqSerializer, TopupRespSerializer, ConnectionReqSerializer, ConnectionRespSerializer
 from umoney.models import DepositBalanceInquiryReq, DepositBalanceInquiryResp
 from umoney.serializers import DepositBalanceInquiryReqSerializer, DepositBalanceInquiryRespSerializer
+from umoney.models import TransactionAggregationInquiryReq, TransactionAggregationInquiryResp
+from umoney.serializers import TransactionAggregationInquiryReqSerializer, TransactionAggregationInquiryRespSerializer
 import socket
 import functools
 from datetime import datetime
@@ -136,6 +138,36 @@ DBI_response_len_arr = {
     'result_message_data': 196,
     'response_data_len': 199,
     'deposit_balance': 209,
+    'filler_space': 327,
+    'etx': 328
+}
+TAI_response_len_arr = {
+    'stx': 0,
+    'message_length': 4,
+    'routing_destination_info': 8,
+    'routing_source_info': 12,
+    'routing_version': 14,
+    'message_type_id': 18,
+    'primary_bit_map': 34,
+    'processing_code': 40,
+    'transmission_datetime': 50,
+    'time_local': 56,
+    'date_local': 60,
+    'transaction_uniq': 72,
+    'response_code': 74,
+    'merchant_id': 89,
+    'merchant_info': 129,
+    'result_message_len': 132,
+    'result_message_data': 196,
+    'response_data_len': 199,
+    'topup_count': 204,
+    'topup_amount': 214,
+    'topup_cancellation_count': 219,
+    'topup_cancellation_amount': 229,
+    'payment_count': 234,
+    'payment_amount': 244,
+    'payment_cancellation_count': 249,
+    'payment_cancellation_amount': 259,
     'filler_space': 327,
     'etx': 328
 }
@@ -443,6 +475,102 @@ class DepositBalanceInquiryRespList(
         create_transaction_unique()
         return self.list(request, *args, **kwargs)
 
+
+class TransactionAggregationInquiryReqList(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.GenericAPIView):
+
+    queryset = TransactionAggregationInquiryReq.objects.all()
+    serializer_class = TransactionAggregationInquiryReqSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        message_type_id = '0260'
+        primary_bit_map = '2200000008200010'
+        processing_code = '182100'
+        transaction_unique = create_transaction_unique()
+        aggregation_inquiry_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 6, '', '', request.data)
+        request.data['message_type_id'] = message_type_id
+        request.data['primary_bit_map'] = primary_bit_map
+        request.data['processing_code'] = processing_code
+        request.data['transaction_unique'] = transaction_unique
+        request.data['transmission_datetime'] = aggregation_inquiry_req_data[41:51]
+        request.data['terminal_id'] = merchant_information[0:10]
+        request.data['request_data_len'] = '131'
+        if request.data['pos_id'] == '':
+            request.data['pos_id'] = pos_id
+        if request.data['closing_gate'] == '':
+            request.data['closing_gate'] = '00000000'
+        obj = self.create(request, *args, **kwargs)
+        if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() <= 0: 
+            return Response({ 'message': 'no vsam_id found, please make connection to umoney','request': obj.data, 'result': {}}, status=status.HTTP_404_NOT_FOUND)
+        print(aggregation_inquiry_req_data.encode("ascii"))
+        data = send_socket_receive_data(aggregation_inquiry_req_data)
+        resp_data = data_to_array_by_type(TAI_response_len_arr, data)
+        TAI_resp_data = {
+            'comment': request.data['comment'], 
+            'message_type_id': resp_data['message_type_id'], 
+            'primary_bit_map': resp_data['primary_bit_map'], 
+            'processing_code': resp_data['processing_code'],
+            'response_code': resp_data['response_code'],
+            'transmission_datetime': resp_data['transmission_datetime'],
+            'transaction_unique': resp_data['transaction_uniq'],
+            'terminal_id': merchant_information[0:10],
+            'result_message_len': resp_data['result_message_len'],
+            'result_message_data': resp_data['result_message_data'],
+            'pos_id': request.data['pos_id'],
+            'topup_count': resp_data['topup_count'],
+            'topup_amount': resp_data['topup_amount'],
+            'topup_cancellation_count': resp_data['topup_cancellation_count'],
+            'topup_cancellation_amount': resp_data['topup_cancellation_amount'],
+            'payment_count': resp_data['payment_count'],
+            'payment_amount': resp_data['payment_amount'],
+            'payment_cancellation_count': resp_data['payment_cancellation_count'],
+            'payment_cancellation_amount': resp_data['payment_cancellation_amount'],
+        }
+        serializer = TransactionAggregationInquiryRespSerializer(data=TAI_resp_data)
+        if serializer.is_valid():
+            serializer.save()
+        
+        return Response({ 'message': 'Success', 'request': obj.data, 'result': serializer.data })
+
+class TransactionAggregationInquiryReqDetail(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    generics.GenericAPIView):
+
+    queryset = TransactionAggregationInquiryReq.objects.all()
+    serializer_class = TransactionAggregationInquiryReqSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
+class TransactionAggregationInquiryRespList(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.GenericAPIView):
+
+    queryset = TransactionAggregationInquiryResp.objects.all()
+    serializer_class = TransactionAggregationInquiryRespSerializer
+
+    def get(self, request, *args, **kwargs):
+        create_transaction_unique()
+        return self.list(request, *args, **kwargs)
+
+""" **************************** """
+""" END OF REQUEST AND RESPONSES """
+""" **************************** """
+
 def data_to_array_by_type(response_len_data, data):
     resp_data = {}
     tmp = -1
@@ -528,6 +656,11 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
         if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() > 0:
             last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
         message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + "                                "
+    elif req_type == 6:
+        last_vsam_id = ''
+        if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() > 0:
+            last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
+        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + card_data['closing_gate'] + "                        "
 
     transmission_date = (datetime.now()).strftime('%m%d%H%M%S')
     print("\n\n\n\n\n" + transmission_date + "\n\n\n\n\n")
