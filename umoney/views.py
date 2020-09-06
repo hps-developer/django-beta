@@ -1,17 +1,22 @@
 from django.shortcuts import render
 
 # Create your views here.
+from rest_framework import status
 from rest_framework import mixins
 from rest_framework import generics
 from rest_framework.response import Response
 from umoney.models import TopupReq, TopupResp, ConnectionReq, ConnectionResp
 from umoney.serializers import TopupReqSerializer, TopupRespSerializer, ConnectionReqSerializer, ConnectionRespSerializer
+from umoney.models import DepositBalanceInquiryReq, DepositBalanceInquiryResp
+from umoney.serializers import DepositBalanceInquiryReqSerializer, DepositBalanceInquiryRespSerializer
 import socket
 import functools
 from datetime import datetime
 from django.db.models import Max
 
 master_key = '30313233343536373839414243444546'
+
+PDA_processing_code = '486000'
 
 stx_hex = '02'
 message_length = '0219'
@@ -111,6 +116,30 @@ OTU_first_response_len_arr = {
     'etx': 328
 }
 
+DBI_response_len_arr = {
+    'stx': 0,
+    'message_length': 4,
+    'routing_destination_info': 8,
+    'routing_source_info': 12,
+    'routing_version': 14,
+    'message_type_id': 18,
+    'primary_bit_map': 34,
+    'processing_code': 40,
+    'transmission_datetime': 50,
+    'time_local': 56,
+    'date_local': 60,
+    'transaction_uniq': 72,
+    'response_code': 74,
+    'merchant_id': 89,
+    'merchant_info': 129,
+    'result_message_len': 132,
+    'result_message_data': 196,
+    'response_data_len': 199,
+    'deposit_balance': 209,
+    'filler_space': 327,
+    'etx': 328
+}
+
 class UmoneyReqList(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
@@ -137,13 +166,14 @@ class UmoneyReqList(
         request.data['transmission_datetime'] = topup_req_data[41:51]
         request.data['terminal_id'] = merchant_information[0:10]
         request.data['request_data_len'] = '131'
-
+        
         resp_data = data_to_array_by_type(OTU_first_response_len_arr, data)
         OTU_first_resp_data = {
             'comment': request.data['comment'], 
             'message_type_id': resp_data['message_type_id'], 
             'primary_bit_map': resp_data['primary_bit_map'], 
             'processing_code': resp_data['processing_code'],
+            'response_code': resp_data['response_code'],
             'transmission_datetime': resp_data['transmission_datetime'],
             'transaction_unique': resp_data['transaction_uniq'],
             'terminal_id': merchant_information[0:10],
@@ -215,6 +245,7 @@ class ConnectionReqList(
         req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 1)
         data = send_socket_receive_data(req_data)
         resp_data = data_to_array_by_type(OID_response_len_arr, data)
+
         encrypted_wk = resp_data['encrypted_wk']
         res = decrypt_seed128(transaction_unique + merchant_information[6:10], encrypted_wk, master_key)
         decrypted_wk = res.decode("ascii")
@@ -231,6 +262,7 @@ class ConnectionReqList(
             'message_type_id': resp_data['message_type_id'],
             'primary_bit_map': resp_data['primary_bit_map'],
             'processing_code': resp_data['processing_code'],
+            'response_code': resp_data['response_code'],
             'transmission_datetime': resp_data['transmission_datetime'],
             'transaction_unique': resp_data['transaction_uniq'],
             'merchant_id': resp_data['merchant_id'],
@@ -245,10 +277,10 @@ class ConnectionReqList(
             'terminal_id': merchant_information, 
             'authentication_id': '', 
         }
+        print('AAAAAAAAAAAAAAAAAAAAAAA')
         serializer = ConnectionRespSerializer(data=oid_resp_data)
         if serializer.is_valid():
             serializer.save()
-        
         message_type_id = '0300'
         primary_bit_map = '2200000008200010'
         processing_code = '486000'
@@ -277,6 +309,7 @@ class ConnectionReqList(
             'message_type_id': PDA_resp_data['message_type_id'],
             'primary_bit_map': PDA_resp_data['primary_bit_map'],
             'processing_code': PDA_resp_data['processing_code'],
+            'response_code': resp_data['response_code'],
             'transmission_datetime': PDA_resp_data['transmission_datetime'],
             'transaction_unique': PDA_resp_data['transaction_uniq'],
             'merchant_id': PDA_resp_data['merchant_id'],
@@ -327,6 +360,87 @@ class ConnectionRespList(
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
 
+
+class DepositBalanceInquiryReqList(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.GenericAPIView):
+
+    queryset = DepositBalanceInquiryReq.objects.all()
+    serializer_class = DepositBalanceInquiryReqSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        message_type_id = '0100'
+        primary_bit_map = '2200000008200010'
+        processing_code = '191100'
+        transaction_unique = create_transaction_unique()
+        deposit_inquiry_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 5, '', '', request.data)
+        request.data['message_type_id'] = message_type_id
+        request.data['primary_bit_map'] = primary_bit_map
+        request.data['processing_code'] = processing_code
+        request.data['transaction_unique'] = transaction_unique
+        request.data['transmission_datetime'] = deposit_inquiry_req_data[41:51]
+        request.data['terminal_id'] = merchant_information[0:10]
+        request.data['request_data_len'] = '131'
+        obj = self.create(request, *args, **kwargs)
+        if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() <= 0: 
+            return Response({ 'deposit_balance': '-1', 'message': 'no vsam_id found, please make connection to umoney','request': obj.data, 'result': {}}, status=status.HTTP_404_NOT_FOUND)
+        print(deposit_inquiry_req_data.encode("ascii"))
+        data = send_socket_receive_data(deposit_inquiry_req_data)
+        resp_data = data_to_array_by_type(DBI_response_len_arr, data)
+        DBI_resp_data = {
+            'comment': request.data['comment'], 
+            'message_type_id': resp_data['message_type_id'], 
+            'primary_bit_map': resp_data['primary_bit_map'], 
+            'processing_code': resp_data['processing_code'],
+            'response_code': resp_data['response_code'],
+            'transmission_datetime': resp_data['transmission_datetime'],
+            'transaction_unique': resp_data['transaction_uniq'],
+            'terminal_id': merchant_information[0:10],
+            'result_message_len': resp_data['result_message_len'],
+            'result_message_data': resp_data['result_message_data'],
+            'pos_id': pos_id,
+            'deposit_balance': resp_data['deposit_balance'],
+        }
+        serializer = DepositBalanceInquiryRespSerializer(data=DBI_resp_data)
+        if serializer.is_valid():
+            serializer.save()
+        
+        return Response({ 'deposit_balance': DBI_resp_data['deposit_balance'], 'message': 'Success', 'request': obj.data, 'result': serializer.data })
+
+class DepositBalanceInquiryReqDetail(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    generics.GenericAPIView):
+
+    queryset = DepositBalanceInquiryReq.objects.all()
+    serializer_class = DepositBalanceInquiryReqSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
+class DepositBalanceInquiryRespList(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.GenericAPIView):
+
+    queryset = DepositBalanceInquiryResp.objects.all()
+    serializer_class = DepositBalanceInquiryRespSerializer
+
+    def get(self, request, *args, **kwargs):
+        create_transaction_unique()
+        return self.list(request, *args, **kwargs)
+
 def data_to_array_by_type(response_len_data, data):
     resp_data = {}
     tmp = -1
@@ -348,11 +462,20 @@ def encrypt_seed128(source_data, decrypted_str, working_key):
 
 def send_socket_receive_data(req_data):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(("202.126.92.39", 12021))
-    s.send(bytes(req_data, encoding='ascii'))
-    data = ''
-    data = s.recv(4096)
-    s.close()
+    data = ('111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'
+    + '111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'
+    + '111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'
+    + '111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'
+    + '111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111').encode("ascii")
+    try:
+        s.connect(("202.126.92.39", 12021))
+        s.send(bytes(req_data, encoding='ascii'))
+        data = s.recv(4096)
+        s.close()
+    except socket.error as exc:
+        print("Caught exception socket.error : %s" % exc)
+        data = data[:133] + str(exc).encode("ascii") + data[197:]
+
     return data
 
 def create_transaction_unique():
@@ -396,6 +519,14 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
         message_request_data = message_request_data + card_data['payment_method']
         message_request_data = message_request_data + '                                                   '
         print(message_request_data + "\n")
+    elif req_type == 4:
+        return
+    elif req_type == 5:
+        last_vsam_id = ''
+        if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() > 0:
+            last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
+        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + "                                "
+
     transmission_date = (datetime.now()).strftime('%m%d%H%M%S')
     print("\n\n\n\n\n" + transmission_date + "\n\n\n\n\n")
     message_request_data_length = '131'

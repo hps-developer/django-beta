@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from umoney.models import TopupReq, TopupResp, ConnectionReq, ConnectionResp
+from umoney.models import TopupReq, TopupResp
+from umoney.models import ConnectionReq, ConnectionResp
+from umoney.models import DepositBalanceInquiryReq, DepositBalanceInquiryResp
 
 
 # class SnippetSerializer(serializers.Serializer):
@@ -90,6 +92,7 @@ class TopupRespSerializer(serializers.ModelSerializer):
             'message_type_id', 
             'primary_bit_map', 
             'processing_code',
+            'response_code',
             'transmission_datetime',
             'transaction_unique',
             'terminal_id',
@@ -133,6 +136,7 @@ class ConnectionRespSerializer(serializers.ModelSerializer):
             'message_type_id',
             'primary_bit_map',
             'processing_code',
+            'response_code',
             'transmission_datetime',
             'transaction_unique',
             'merchant_id',
@@ -147,4 +151,42 @@ class ConnectionRespSerializer(serializers.ModelSerializer):
             'terminal_id', 
             'authentication_id', 
             'vsam_id'
+            ]
+
+class DepositBalanceInquiryReqSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DepositBalanceInquiryReq
+        fields = [
+            'id', 
+            'created',
+            'comment',
+            'message_type_id',
+            'primary_bit_map',
+            'processing_code',
+            'transmission_datetime',
+            'transaction_unique',
+            'terminal_id',
+            'request_data_len',
+            'pos_id',
+            'encrypted_vsam_id',
+        ]
+
+class DepositBalanceInquiryRespSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DepositBalanceInquiryResp
+        fields = [
+            'id', 
+            'created',
+            'comment',
+            'message_type_id',
+            'primary_bit_map',
+            'response_code',
+            'result_message_len',
+            'result_message_data',
+            'processing_code',
+            'transmission_datetime',
+            'transaction_unique',
+            'terminal_id',
+            'pos_id',
+            'deposit_balance',
             ]

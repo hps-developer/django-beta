@@ -66,6 +66,7 @@ class TopupResp(models.Model):
     message_type_id = models.CharField(max_length=4, blank=True, default='')
     primary_bit_map = models.CharField(max_length=16, blank=True, default='')
     processing_code = models.CharField(max_length=6, blank=True, default='')
+    response_code = models.CharField(max_length=2, blank=True, default='')
     transmission_datetime = models.CharField(max_length=10, blank=True, default='')
     transaction_unique = models.CharField(max_length=12, blank=True, default='')
     terminal_id = models.CharField(max_length=40, blank=True, default='')
@@ -80,6 +81,40 @@ class TopupResp(models.Model):
     deposit_balance = models.CharField(max_length=10, blank=True, default='')
     payment_method = models.CharField(max_length=1, blank=True, default='')
     sign1 = models.CharField(max_length=8, blank=True, default='')
+
+    class Meta:
+        ordering = ['created']
+
+class DepositBalanceInquiryReq(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    comment = models.CharField(max_length=100, blank=True, default='')
+    message_type_id = models.CharField(max_length=4, blank=True, default='')
+    primary_bit_map = models.CharField(max_length=16, blank=True, default='')
+    processing_code = models.CharField(max_length=6, blank=True, default='')
+    transmission_datetime = models.CharField(max_length=10, blank=True, default='')
+    transaction_unique = models.CharField(max_length=12, blank=True, default='')
+    terminal_id = models.CharField(max_length=40, blank=True, default='')
+    request_data_len = models.CharField(max_length=3, blank=True, default='')
+    pos_id = models.CharField(max_length=64, blank=True, default='')
+    encrypted_vsam_id = models.CharField(max_length=32, blank=True, default='')
+
+    class Meta:
+        ordering = ['created']
+
+class DepositBalanceInquiryResp(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    comment = models.CharField(max_length=100, blank=True, default='')
+    message_type_id = models.CharField(max_length=4, blank=True, default='')
+    primary_bit_map = models.CharField(max_length=16, blank=True, default='')
+    response_code = models.CharField(max_length=2, blank=True, default='')
+    result_message_len = models.CharField(max_length=3, blank=True, default='')
+    result_message_data = models.CharField(max_length=64, blank=True, default='')
+    processing_code = models.CharField(max_length=6, blank=True, default='')
+    transmission_datetime = models.CharField(max_length=10, blank=True, default='')
+    transaction_unique = models.CharField(max_length=12, blank=True, default='')
+    terminal_id = models.CharField(max_length=40, blank=True, default='')
+    pos_id = models.CharField(max_length=64, blank=True, default='')
+    deposit_balance = models.CharField(max_length=32, blank=True, default='')
 
     class Meta:
         ordering = ['created']

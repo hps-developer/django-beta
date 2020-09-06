@@ -10,6 +10,9 @@ urlpatterns = [
     path('connection/', views.ConnectionReqList.as_view()),
     path('connection/<int:pk>/', views.ConnectionReqDetail.as_view()),
     path('connectionresp/', views.ConnectionRespList.as_view()),
+    path('depositinquiry/', views.DepositBalanceInquiryReqList.as_view()),
+    path('depositinquiry/<int:pk>/', views.DepositBalanceInquiryReqDetail.as_view()),
+    path('depositinquiryresp/', views.DepositBalanceInquiryRespList.as_view()),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)
