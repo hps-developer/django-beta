@@ -6,10 +6,12 @@ from rest_framework import mixins
 from rest_framework import generics
 from rest_framework.response import Response
 from umoney.models import TopupReq, TopupResp, ConnectionReq, ConnectionResp
-from umoney.serializers import TopupReqSerializer, TopupRespSerializer, ConnectionReqSerializer, ConnectionRespSerializer
+from umoney.models import TopupCheckReq, TopupCheckResp
 from umoney.models import DepositBalanceInquiryReq, DepositBalanceInquiryResp
-from umoney.serializers import DepositBalanceInquiryReqSerializer, DepositBalanceInquiryRespSerializer
 from umoney.models import TransactionAggregationInquiryReq, TransactionAggregationInquiryResp
+from umoney.serializers import TopupReqSerializer, TopupRespSerializer, ConnectionReqSerializer, ConnectionRespSerializer
+from umoney.serializers import TopupCheckReqSerializer, TopupCheckRespSerializer
+from umoney.serializers import DepositBalanceInquiryReqSerializer, DepositBalanceInquiryRespSerializer
 from umoney.serializers import TransactionAggregationInquiryReqSerializer, TransactionAggregationInquiryRespSerializer
 import socket
 import functools
@@ -167,6 +169,7 @@ DBI_response_len_arr = {
     'filler_space': 327,
     'etx': 328
 }
+
 TAI_response_len_arr = {
     'stx': 0,
     'message_length': 4,
@@ -418,7 +421,6 @@ class ConnectionRespList(
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
 
-
 class DepositBalanceInquiryReqList(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
@@ -501,7 +503,6 @@ class DepositBalanceInquiryRespList(
     def get(self, request, *args, **kwargs):
         create_transaction_unique()
         return self.list(request, *args, **kwargs)
-
 
 class TransactionAggregationInquiryReqList(
     mixins.ListModelMixin,
@@ -594,6 +595,97 @@ class TransactionAggregationInquiryRespList(
         create_transaction_unique()
         return self.list(request, *args, **kwargs)
 
+class TopupCheckReqList(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.GenericAPIView):
+
+    queryset = TopupCheckReq.objects.all()
+    serializer_class = TopupCheckReqSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        message_type_id = '0200'
+        primary_bit_map = '2200000008200010'
+        processing_code = '183101'
+        transaction_unique = create_transaction_unique()
+        topup_check_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 4, '', '', request.data)
+        print(topup_check_req_data.encode("ascii"))
+        data = send_socket_receive_data(topup_check_req_data)
+        request.data['message_type_id'] = message_type_id
+        request.data['primary_bit_map'] = primary_bit_map
+        request.data['processing_code'] = processing_code
+        request.data['transaction_unique'] = transaction_unique
+        request.data['transmission_datetime'] = topup_check_req_data[41:51]
+        request.data['terminal_id'] = merchant_information[0:10]
+        request.data['request_data_len'] = '131'
+        request.data['vsam_id'] = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
+        
+        resp_data = data_to_array_by_type(OTU_second_response_len_arr, data)
+        OTU_second_resp_data = {
+            'comment': request.data['comment'], 
+            'message_type_id': resp_data['message_type_id'], 
+            'primary_bit_map': resp_data['primary_bit_map'], 
+            'processing_code': resp_data['processing_code'],
+            'response_code': resp_data['response_code'],
+            'transmission_datetime': resp_data['transmission_datetime'],
+            'transaction_unique': resp_data['transaction_uniq'],
+            'terminal_id': merchant_information[0:10],
+            'result_message_len': resp_data['result_message_len'],
+            'result_message_data': resp_data['result_message_data'],
+            'deposit_balance': resp_data['deposit_balance'],
+            'vsam_id': request.data['vsam_id'],
+            'sign3': request.data['sign3'],
+            'sign2': request.data['sign2'],
+            'tran_type': request.data['tran_type'],
+            'card_number': request.data['card_number'],
+            'card_algorithm_id': request.data['card_algorithm_id'],
+            'card_keyset_v': request.data['card_keyset_v'],
+            'card_transaction_seq_number': request.data['card_transaction_seq_number'],
+            'card_random_number': request.data['card_random_number'],
+            'topup_amount': request.data['topup_amount'],
+            'card_pre_balance': request.data['card_pre_balance'],
+            'card_post_balance': request.data['card_post_balance'],
+        }
+        serializer = TopupRespSerializer(data=OTU_second_resp_data)
+        if serializer.is_valid():
+            serializer.save()
+
+        obj = self.create(request, *args, **kwargs)
+        return Response({ 'request': obj.data, 'result': serializer.data })
+
+class TopupCheckReqDetail(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    generics.GenericAPIView):
+
+    queryset = TopupCheckReq.objects.all()
+    serializer_class = TopupCheckReqSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
+class TopupCheckRespList(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.GenericAPIView):
+
+    queryset = TopupCheckResp.objects.all()
+    serializer_class = TopupCheckRespSerializer
+
+    def get(self, request, *args, **kwargs):
+        create_transaction_unique()
+        return self.list(request, *args, **kwargs)
+
 """ **************************** """
 """ END OF REQUEST AND RESPONSES """
 """ **************************** """
@@ -676,7 +768,6 @@ def create_transaction_unique():
     print("********" + result + "********")
     return result
 
-    
 def prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, req_type, auth_id='', working_key='', card_data = {}):
     message_request_data = 'ID1234ID1234ID1222                                                                                                              '    
     if req_type == 1:
@@ -699,7 +790,19 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
         message_request_data = message_request_data + '                                                   '
         print(message_request_data + "\n")
     elif req_type == 4:
-        return
+        message_request_data = ''
+        message_request_data = message_request_data + card_data['tran_type']
+        message_request_data = message_request_data + card_data['card_number']
+        message_request_data = message_request_data + card_data['card_algorithm_id']
+        message_request_data = message_request_data + card_data['card_keyset_v']
+        message_request_data = message_request_data + card_data['card_transaction_seq_number']
+        message_request_data = message_request_data + card_data['card_random_number']
+        message_request_data = message_request_data + card_data['topup_amount']
+        message_request_data = message_request_data + card_data['card_pre_balance']
+        message_request_data = message_request_data + card_data['card_post_balance']
+        message_request_data = message_request_data + card_data['sign3']
+        message_request_data = message_request_data + card_data['result_code']
+        message_request_data = message_request_data + '                                      '
     elif req_type == 5:
         last_vsam_id = ''
         last_vsam_id_hex = ''
@@ -780,46 +883,5 @@ def toHex(s):
 def toStr(s):
     return s and chr(int(s[:2], base=16)) + toStr(s[2:]) or ''
 
-# @api_view(['GET', 'POST'])
-# def umoney_req_list(request, format=None):
-#     """
-#     List all code UmoneyReq, or create a new UmoneyReq.
-#     """
-#     if request.method == 'GET':
-#         snippets = UmoneyReq.objects.all()
-#         serializer = UmoneyReqSerializer(snippets, many=True)
-#         return Response(serializer.data)
-
-#     elif request.method == 'POST':
-#         serializer = UmoneyReqSerializer(data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# @api_view(['GET', 'PUT', 'DELETE'])
-# def umoney_req_detail(request, pk, format=None):
-#     """
-#     Retrieve, update or delete a code UmoneyReq.
-#     """
-#     try:
-#         snippet = UmoneyReq.objects.get(pk=pk)
-#     except Snippet.DoesNotExist:
-#         return Response(status=status.HTTP_404_NOT_FOUND)
-
-#     if request.method == 'GET':
-#         serializer = UmoneyReqSerializer(snippet)
-#         return Response(serializer.data)
-
-#     elif request.method == 'PUT':
-#         serializer = UmoneyReqSerializer(snippet, data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#     elif request.method == 'DELETE':
-#         snippet.delete()
-#         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

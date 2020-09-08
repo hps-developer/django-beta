@@ -136,6 +136,7 @@ class TopupCheckReqSerializer(serializers.ModelSerializer):
             'card_post_balance',
             'sign3',
             'result_code',
+            'sign2',
             ]
 
 class TopupCheckRespSerializer(serializers.ModelSerializer):
@@ -155,7 +156,18 @@ class TopupCheckRespSerializer(serializers.ModelSerializer):
             'result_message_len',
             'result_message_data',
             'deposit_balance',
+            'vsam_id',
             'sign3',
+            'sign2',
+            'tran_type',
+            'card_number',
+            'card_algorithm_id',
+            'card_keyset_v',
+            'card_transaction_seq_number',
+            'card_random_number',
+            'topup_amount',
+            'card_pre_balance',
+            'card_post_balance',
             ]
 
 class ConnectionReqSerializer(serializers.ModelSerializer):
