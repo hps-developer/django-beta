@@ -85,6 +85,49 @@ class TopupResp(models.Model):
     class Meta:
         ordering = ['created']
 
+class TopupCheckReq(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    comment = models.CharField(max_length=100, blank=True, default='')
+    message_type_id = models.CharField(max_length=4, blank=True, default='')
+    primary_bit_map = models.CharField(max_length=16, blank=True, default='')
+    processing_code = models.CharField(max_length=6, blank=True, default='')
+    transmission_datetime = models.CharField(max_length=10, blank=True, default='')
+    transaction_unique = models.CharField(max_length=12, blank=True, default='')
+    terminal_id = models.CharField(max_length=40, blank=True, default='')
+    request_data_len = models.CharField(max_length=3, blank=True, default='')
+    tran_type = models.CharField(max_length=2, blank=True, default='')
+    card_number = models.CharField(max_length=16, blank=True, default='')
+    card_algorithm_id = models.CharField(max_length=2, blank=True, default='')
+    card_keyset_v = models.CharField(max_length=2, blank=True, default='')
+    card_transaction_seq_number = models.CharField(max_length=10, blank=True, default='')
+    card_random_number = models.CharField(max_length=16, blank=True, default='')
+    topup_amount = models.CharField(max_length=10, blank=True, default='')
+    card_pre_balance = models.CharField(max_length=10, blank=True, default='')
+    card_post_balance = models.CharField(max_length=10, blank=True, default='')
+    sign3 = models.CharField(max_length=8, blank=True, default='')
+    result_code = models.CharField(max_length=4, blank=True, default='9000')
+
+    class Meta:
+        ordering = ['created']
+
+class TopupCheckResp(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    comment = models.CharField(max_length=100, blank=True, default='')
+    message_type_id = models.CharField(max_length=4, blank=True, default='')
+    primary_bit_map = models.CharField(max_length=16, blank=True, default='')
+    processing_code = models.CharField(max_length=6, blank=True, default='')
+    response_code = models.CharField(max_length=2, blank=True, default='')
+    transmission_datetime = models.CharField(max_length=10, blank=True, default='')
+    transaction_unique = models.CharField(max_length=12, blank=True, default='')
+    terminal_id = models.CharField(max_length=40, blank=True, default='')
+    result_message_len = models.CharField(max_length=3, blank=True, default='')
+    result_message_data = models.CharField(max_length=64, blank=True, default='')
+    deposit_balance = models.CharField(max_length=10, blank=True, default='')
+    sign3 = models.CharField(max_length=8, blank=True, default='')
+    
+    class Meta:
+        ordering = ['created']
+
 class DepositBalanceInquiryReq(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     comment = models.CharField(max_length=100, blank=True, default='')

@@ -14,6 +14,7 @@ from umoney.serializers import TransactionAggregationInquiryReqSerializer, Trans
 import socket
 import functools
 from datetime import datetime
+import pytz
 from django.db.models import Max
 
 master_key = '30313233343536373839414243444546'
@@ -114,6 +115,31 @@ OTU_first_response_len_arr = {
     'topup_amount': 245,
     'sign2': 253,
     'deposit_balance': 263,
+    'filler_space': 327,
+    'etx': 328
+}
+
+
+OTU_second_response_len_arr = {
+    'stx': 0,
+    'message_length': 4,
+    'routing_destination_info': 8,
+    'routing_source_info': 12,
+    'routing_version': 14,
+    'message_type_id': 18,
+    'primary_bit_map': 34,
+    'processing_code': 40,
+    'transmission_datetime': 50,
+    'time_local': 56,
+    'date_local': 60,
+    'transaction_uniq': 72,
+    'response_code': 74,
+    'merchant_id': 89,
+    'merchant_info': 129,
+    'result_message_len': 132,
+    'result_message_data': 196,
+    'response_data_len': 199,
+    'deposit_balance': 209,
     'filler_space': 327,
     'etx': 328
 }
@@ -424,6 +450,7 @@ class DepositBalanceInquiryReqList(
             return Response({ 'deposit_balance': '-1', 'message': 'no vsam_id found, please make connection to umoney','request': obj.data, 'result': {}}, status=status.HTTP_404_NOT_FOUND)
         print(deposit_inquiry_req_data.encode("ascii"))
         data = send_socket_receive_data(deposit_inquiry_req_data)
+        print(data)
         resp_data = data_to_array_by_type(DBI_response_len_arr, data)
         DBI_resp_data = {
             'comment': request.data['comment'], 
@@ -613,16 +640,30 @@ def create_transaction_unique():
     result = current_date + '000000'
     result1 = '000000000000'
     result2 = '000000000000'
-    if ConnectionReq.objects.all().count() + TopupReq.objects.all().count() > 0:
+    result3 = '000000000000'
+    result4 = '000000000000'
+    if ConnectionReq.objects.all().count() + TopupReq.objects.all().count() + DepositBalanceInquiryReq.objects.all().count() + TransactionAggregationInquiryReq.objects.all().count() > 0:
         if ConnectionReq.objects.all().count() > 0:
             result1 = ConnectionReq.objects.aggregate(Max('transaction_unique'))['transaction_unique__max']
         if TopupReq.objects.all().count() > 0:
             result2 = TopupReq.objects.aggregate(Max('transaction_unique'))['transaction_unique__max']
+        if DepositBalanceInquiryReq.objects.all().count() > 0:
+            result3 = DepositBalanceInquiryReq.objects.aggregate(Max('transaction_unique'))['transaction_unique__max']
+        if TransactionAggregationInquiryReq.objects.all().count() > 0:
+            result4 = TransactionAggregationInquiryReq.objects.aggregate(Max('transaction_unique'))['transaction_unique__max']
         tmp = ''
-        if result1 > result2:
+        print(result1)
+        print(result2)
+        print(result3)
+        print(result4)
+        if result1 > tmp:
             tmp = result1
-        else: 
+        if result2 > tmp: 
             tmp = result2
+        if result3 > tmp: 
+            tmp = result3
+        if result4 > tmp: 
+            tmp = result4
         result = tmp[0:6] + str(int(tmp[6:]) +1 ).zfill(6)
     print("********" + result + "********")
     return result
@@ -655,14 +696,16 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
         last_vsam_id = ''
         if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() > 0:
             last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
+            working_key = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].working_key
         message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + "                                "
     elif req_type == 6:
         last_vsam_id = ''
         if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() > 0:
             last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
-        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + card_data['closing_gate'] + "                        "
-
-    transmission_date = (datetime.now()).strftime('%m%d%H%M%S')
+            working_key = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].working_key
+        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + (datetime.now()).strftime('%Y%m%d') + "                        "
+        print(message_request_data)
+    transmission_date = (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%m%d%H%M%S')
     print("\n\n\n\n\n" + transmission_date + "\n\n\n\n\n")
     message_request_data_length = '131'
     
