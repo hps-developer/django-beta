@@ -124,7 +124,7 @@ class TopupCheckResp(models.Model):
     result_message_data = models.CharField(max_length=64, blank=True, default='')
     deposit_balance = models.CharField(max_length=10, blank=True, default='')
     sign3 = models.CharField(max_length=8, blank=True, default='')
-    
+
     class Meta:
         ordering = ['created']
 
@@ -175,7 +175,7 @@ class TransactionAggregationInquiryReq(models.Model):
     request_data_len = models.CharField(max_length=3, blank=True, default='')
     pos_id = models.CharField(max_length=64, blank=True, default='ID1234ID1234ID1222')
     encrypted_vsam_id = models.CharField(max_length=32, blank=True, default='00000000')
-    closing_gate = models.CharField(max_length=8, blank=True, default='')
+    closing_date = models.CharField(max_length=8, blank=True, default='')
 
     class Meta:
         ordering = ['created']

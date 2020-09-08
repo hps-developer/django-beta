@@ -381,7 +381,7 @@ class ConnectionReqList(
             'pos_id': pos_id, 
             'terminal_id': PDA_resp_data['merchant_info'][0:10], 
             'authentication_id': authentication_id, 
-            'vsam_id': decrypt_seed128(PDA_resp_data['transaction_uniq'] + PDA_resp_data['merchant_info'][0:10], PDA_resp_data['encrypted_vsam'], decrypted_wk).decode("ascii")
+            'vsam_id': decrypt_seed128(PDA_resp_data['transaction_uniq'] + PDA_resp_data['merchant_info'][6:10], PDA_resp_data['encrypted_vsam'], decrypted_wk).decode("ascii")
         }
         serializer = ConnectionRespSerializer(data=pda_resp_data_model)
         if serializer.is_valid():
@@ -529,8 +529,8 @@ class TransactionAggregationInquiryReqList(
         request.data['request_data_len'] = '131'
         if request.data['pos_id'] == '':
             request.data['pos_id'] = pos_id
-        if request.data['closing_gate'] == '':
-            request.data['closing_gate'] = '00000000'
+        if request.data['closing_date'] == '':
+            request.data['closing_date'] = (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%Y%m%d')
         obj = self.create(request, *args, **kwargs)
         if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() <= 0: 
             return Response({ 'message': 'no vsam_id found, please make connection to umoney','request': obj.data, 'result': {}}, status=status.HTTP_404_NOT_FOUND)
@@ -601,6 +601,9 @@ class TransactionAggregationInquiryRespList(
 def data_to_array_by_type(response_len_data, data):
     resp_data = {}
     tmp = -1
+    print("RESPONSE:\n")
+    print(data)
+    print("\n\n\n")
     for k,v in response_len_data.items():
         print(k + ": " + (data[tmp:v+1]).decode())
         resp_data[k] = (data[tmp:v+1]).decode()
@@ -615,6 +618,11 @@ def decrypt_seed128(source_data, encrypted_str, mkey):
 def encrypt_seed128(source_data, decrypted_str, working_key):
     compile_java('encryptSEED128.java')
     res = execute_java('encryptSEED128.java', source_data + decrypted_str + working_key, '')
+    return res
+
+def encrypt_seed128_hex(source_data, decrypted_str, working_key):
+    compile_java('encryptSEED128Hex.java')
+    res = execute_java('encryptSEED128Hex.java', source_data + decrypted_str + working_key, '')
     return res
 
 def send_socket_receive_data(req_data):
@@ -636,7 +644,7 @@ def send_socket_receive_data(req_data):
     return data
 
 def create_transaction_unique():
-    current_date = (datetime.now()).strftime('%y%m%d')
+    current_date = (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%y%m%d')
     result = current_date + '000000'
     result1 = '000000000000'
     result2 = '000000000000'
@@ -694,16 +702,20 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
         return
     elif req_type == 5:
         last_vsam_id = ''
+        last_vsam_id_hex = ''
         if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() > 0:
             last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
+            last_vsam_id_hex = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id
             working_key = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].working_key
-        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + "                                "
+        print("----------" + last_vsam_id_hex + "----------")
+        print("----------" + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + "-----")
+        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128_hex(transaction_unique+merchant_information[6:10], last_vsam_id_hex, working_key).decode("ascii") + "                                "
     elif req_type == 6:
         last_vsam_id = ''
         if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() > 0:
             last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
             working_key = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].working_key
-        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + (datetime.now()).strftime('%Y%m%d') + "                        "
+        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%Y%m%d') + "                        "
         print(message_request_data)
     transmission_date = (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%m%d%H%M%S')
     print("\n\n\n\n\n" + transmission_date + "\n\n\n\n\n")

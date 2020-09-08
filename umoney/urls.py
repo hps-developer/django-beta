@@ -16,6 +16,9 @@ urlpatterns = [
     path('transactionaggregation/', views.TransactionAggregationInquiryReqList.as_view()),
     path('transactionaggregation/<int:pk>/', views.TransactionAggregationInquiryReqDetail.as_view()),
     path('transactionaggregationresp/', views.TransactionAggregationInquiryRespList.as_view()),
+    path('topupcheck/', views.TopupCheckReqList.as_view()),
+    path('topupcheck/<int:pk>/', views.TopupCheckReqDetail.as_view()),
+    path('topupcheckresp/', views.TopupCheckRespList.as_view()),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

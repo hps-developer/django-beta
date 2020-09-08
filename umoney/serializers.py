@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from umoney.models import TopupReq, TopupResp
+from umoney.models import TopupCheckReq, TopupCheckResp
 from umoney.models import ConnectionReq, ConnectionResp
 from umoney.models import DepositBalanceInquiryReq, DepositBalanceInquiryResp
 from umoney.models import TransactionAggregationInquiryReq, TransactionAggregationInquiryResp
@@ -110,6 +111,53 @@ class TopupRespSerializer(serializers.ModelSerializer):
             'sign1',
             ]
 
+class TopupCheckReqSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TopupCheckReq
+        fields = [
+            'id', 
+            'created',
+            'comment',
+            'message_type_id',
+            'primary_bit_map',
+            'processing_code',
+            'transmission_datetime',
+            'transaction_unique',
+            'terminal_id',
+            'request_data_len',
+            'tran_type',
+            'card_number',
+            'card_algorithm_id',
+            'card_keyset_v',
+            'card_transaction_seq_number',
+            'card_random_number',
+            'topup_amount',
+            'card_pre_balance',
+            'card_post_balance',
+            'sign3',
+            'result_code',
+            ]
+
+class TopupCheckRespSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TopupCheckResp
+        fields = [
+            'id', 
+            'created',
+            'comment',
+            'message_type_id',
+            'primary_bit_map',
+            'processing_code',
+            'response_code',
+            'transmission_datetime',
+            'transaction_unique',
+            'terminal_id',
+            'result_message_len',
+            'result_message_data',
+            'deposit_balance',
+            'sign3',
+            ]
+
 class ConnectionReqSerializer(serializers.ModelSerializer):
     class Meta:
         model = ConnectionReq
@@ -208,7 +256,7 @@ class TransactionAggregationInquiryReqSerializer(serializers.ModelSerializer):
             'request_data_len',
             'pos_id',
             'encrypted_vsam_id',
-            'closing_gate',
+            'closing_date',
         ]
 
 class TransactionAggregationInquiryRespSerializer(serializers.ModelSerializer):
