@@ -248,7 +248,9 @@ class UmoneyReqList(
             'sign2': resp_data['sign2'],
             'deposit_balance': resp_data['deposit_balance'],
             'payment_method': request.data['payment_method'],
-            'sign1': request.data['sign1']
+            'sign1': request.data['sign1'],
+            'vsam_id': get_last_vsam_id(True),
+            'vsam_id_hex': get_last_vsam_id(False),
         }
         serializer = TopupRespSerializer(data=OTU_first_resp_data)
         if serializer.is_valid():
@@ -610,10 +612,15 @@ class TopupCheckReqList(
         message_type_id = '0200'
         primary_bit_map = '2200000008200010'
         processing_code = '183101'
+        request.data['topup_amount'] = request.data['topup_amount'].zfill(10)
+        request.data['card_transaction_seq_number'] = request.data['card_transaction_seq_number'].zfill(10)
+        request.data['card_pre_balance'] = request.data['card_pre_balance'].zfill(10)
+        request.data['card_post_balance'] = request.data['card_post_balance'].zfill(10)
         transaction_unique = create_transaction_unique()
         topup_check_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 4, '', '', request.data)
         print(topup_check_req_data.encode("ascii"))
         data = send_socket_receive_data(topup_check_req_data)
+
         request.data['message_type_id'] = message_type_id
         request.data['primary_bit_map'] = primary_bit_map
         request.data['processing_code'] = processing_code
@@ -639,15 +646,15 @@ class TopupCheckReqList(
             'vsam_id': request.data['vsam_id'],
             'sign3': request.data['sign3'],
             'sign2': request.data['sign2'],
-            'tran_type': request.data['tran_type'],
+            'tran_type': request.data['tran_type'].zfill(2),
             'card_number': request.data['card_number'],
             'card_algorithm_id': request.data['card_algorithm_id'],
             'card_keyset_v': request.data['card_keyset_v'],
             'card_transaction_seq_number': request.data['card_transaction_seq_number'],
             'card_random_number': request.data['card_random_number'],
-            'topup_amount': request.data['topup_amount'],
-            'card_pre_balance': request.data['card_pre_balance'],
-            'card_post_balance': request.data['card_post_balance'],
+            'topup_amount': request.data['topup_amount'].zfill(10),
+            'card_pre_balance': request.data['card_pre_balance'].zfill(10),
+            'card_post_balance': request.data['card_post_balance'].zfill(10),
         }
         serializer = TopupRespSerializer(data=OTU_second_resp_data)
         if serializer.is_valid():
@@ -770,12 +777,15 @@ def create_transaction_unique():
 
 def prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, req_type, auth_id='', working_key='', card_data = {}):
     message_request_data = 'ID1234ID1234ID1222                                                                                                              '    
+    message_request_data_length = '131'
+    transmission_date = (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%m%d%H%M%S')
     if req_type == 1:
         message_request_data = 'ID1234ID1234ID1222                                                                                                              '
     elif req_type == 2:
         # print(encrypt_seed128(transaction_unique+merchant_information[6:10], auth_id).decode("ascii")+"\n\n\n")
         message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], auth_id, working_key).decode("ascii") + "                                "
-    elif req_type == 3:
+    elif req_type == 3:        
+        message_request_data_length = '141'
         message_request_data = ''
         message_request_data = message_request_data + card_data['tran_type']
         message_request_data = message_request_data + card_data['card_number']
@@ -788,6 +798,7 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
         message_request_data = message_request_data + card_data['sign1']
         message_request_data = message_request_data + card_data['payment_method']
         message_request_data = message_request_data + '                                                   '
+        transmission_date = card_data['transmission_datetime']
         print(message_request_data + "\n")
     elif req_type == 4:
         message_request_data = ''
@@ -820,9 +831,7 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
             working_key = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].working_key
         message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%Y%m%d') + "                        "
         print(message_request_data)
-    transmission_date = (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%m%d%H%M%S')
     print("\n\n\n\n\n" + transmission_date + "\n\n\n\n\n")
-    message_request_data_length = '131'
     
     message_data = ''
     message_data = message_data + message_type_id
@@ -845,6 +854,16 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
     print(req_data + "\n")
     return req_data
 
+def get_last_vsam_id(is_hex = False):
+    last_vsam_id='none'
+    last_vsam_id_hex ='none'
+    if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() > 0:
+        last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
+        last_vsam_id_hex = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id
+    if is_hex:
+        return last_vsam_id
+    else:
+        return last_vsam_id_hex
 """ 
 java compiler
 """

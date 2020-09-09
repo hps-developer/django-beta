@@ -56,6 +56,30 @@ from umoney.models import TransactionAggregationInquiryReq, TransactionAggregati
     "terminal_id": "",
     "request_data_len": ""
 }
+
+{ 
+    "alg": "10", 
+    "bal": 0000000000, 
+    "idEp": "1610000007267156", 
+    "idcenter": "01", 
+    "ntEp": "0000000102", 
+    "rep": "02e7a9630745e3f9", 
+    "sign1": "273a8af4"
+}
+
+{
+"card_number": "1610000007267156",
+"card_algorithm_id": "10",
+"card_keyset_v": "01",
+"card_transaction_seq_number": "0000000102",
+"card_random_number": "02e7a9630745e3f9",
+"card_balance": "0000000000",
+"topup_amount": "0000000500",
+"sign1": "273a8af4",
+"comment": "HI TOPUP 500 PLEASE.",
+"tran_type": "02",
+"payment_method": "3"
+}
 """
 
 class TopupReqSerializer(serializers.ModelSerializer):
@@ -109,6 +133,8 @@ class TopupRespSerializer(serializers.ModelSerializer):
             'deposit_balance',
             'payment_method',
             'sign1',
+            'vsam_id',
+            'vsam_id_hex',
             ]
 
 class TopupCheckReqSerializer(serializers.ModelSerializer):
