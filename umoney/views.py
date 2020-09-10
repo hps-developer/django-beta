@@ -735,7 +735,9 @@ def send_socket_receive_data(req_data):
     except socket.error as exc:
         print("Caught exception socket.error : %s" % exc)
         data = data[:133] + str(exc).encode("ascii") + data[197:]
-    print("SOCKET RESPONSE FULL:" + data)
+    print("\n\n\nSOCKET RESPONSE FULL:\n")
+    print(data)
+    print("\n")
     return data
 
 def create_transaction_unique():
