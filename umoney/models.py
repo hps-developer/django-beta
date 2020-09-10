@@ -56,6 +56,7 @@ class TopupReq(models.Model):
     topup_amount = models.CharField(max_length=10, blank=True, default='')
     sign1 = models.CharField(max_length=8, blank=True, default='')
     payment_method = models.CharField(max_length=1, blank=True, default='')
+    payment_id = models.CharField(max_length=36, blank=True, default='')
 
     class Meta:
         ordering = ['created']
@@ -83,6 +84,7 @@ class TopupResp(models.Model):
     sign1 = models.CharField(max_length=8, blank=True, default='')
     vsam_id = models.CharField(max_length=32, blank=True, default='')
     vsam_id_hex = models.CharField(max_length=32, blank=True, default='')
+    payment_id = models.CharField(max_length=36, blank=True, default='')
 
     class Meta:
         ordering = ['created']
@@ -108,7 +110,7 @@ class TopupCheckReq(models.Model):
     card_post_balance = models.CharField(max_length=10, blank=True, default='')
     sign3 = models.CharField(max_length=8, blank=True, default='')
     result_code = models.CharField(max_length=4, blank=True, default='9000')
-    sign2 = models.CharField(max_length=8, blank=True, default='')
+    payment_id = models.CharField(max_length=36, blank=True, default='')
 
     class Meta:
         ordering = ['created']
@@ -128,7 +130,6 @@ class TopupCheckResp(models.Model):
     deposit_balance = models.CharField(max_length=10, blank=True, default='')
     vsam_id = models.CharField(max_length=16, blank=True, default='')
     sign3 = models.CharField(max_length=8, blank=True, default='')
-    sign2 = models.CharField(max_length=8, blank=True, default='')
     tran_type = models.CharField(max_length=2, blank=True, default='')
     card_number = models.CharField(max_length=16, blank=True, default='')
     card_algorithm_id = models.CharField(max_length=2, blank=True, default='')
@@ -138,6 +139,7 @@ class TopupCheckResp(models.Model):
     topup_amount = models.CharField(max_length=10, blank=True, default='')
     card_pre_balance = models.CharField(max_length=10, blank=True, default='')
     card_post_balance = models.CharField(max_length=10, blank=True, default='')
+    payment_id = models.CharField(max_length=36, blank=True, default='')
 
     class Meta:
         ordering = ['created']

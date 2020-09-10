@@ -218,7 +218,6 @@ class UmoneyReqList(
         processing_code = '183100'
         transaction_unique = create_transaction_unique()
         topup_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 3, '', '', request.data)
-        print(topup_req_data.encode("ascii"))
         data = send_socket_receive_data(topup_req_data)
         request.data['message_type_id'] = message_type_id
         request.data['primary_bit_map'] = primary_bit_map
@@ -251,6 +250,7 @@ class UmoneyReqList(
             'sign1': request.data['sign1'],
             'vsam_id': get_last_vsam_id(True),
             'vsam_id_hex': get_last_vsam_id(False),
+            'payment_id': request.data['payment_id'],
         }
         serializer = TopupRespSerializer(data=OTU_first_resp_data)
         if serializer.is_valid():
@@ -286,7 +286,6 @@ class TopupRespList(
     serializer_class = TopupRespSerializer
 
     def get(self, request, *args, **kwargs):
-        create_transaction_unique()
         return self.list(request, *args, **kwargs)
 
 class ConnectionReqList(
@@ -390,7 +389,6 @@ class ConnectionReqList(
         }
         serializer = ConnectionRespSerializer(data=pda_resp_data_model)
         if serializer.is_valid():
-            print('hihi')
             serializer.save()
         return Response({})
 
@@ -452,9 +450,7 @@ class DepositBalanceInquiryReqList(
         obj = self.create(request, *args, **kwargs)
         if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() <= 0: 
             return Response({ 'deposit_balance': '-1', 'message': 'no vsam_id found, please make connection to umoney','request': obj.data, 'result': {}}, status=status.HTTP_404_NOT_FOUND)
-        print(deposit_inquiry_req_data.encode("ascii"))
         data = send_socket_receive_data(deposit_inquiry_req_data)
-        print(data)
         resp_data = data_to_array_by_type(DBI_response_len_arr, data)
         DBI_resp_data = {
             'comment': request.data['comment'], 
@@ -618,7 +614,6 @@ class TopupCheckReqList(
         request.data['card_post_balance'] = request.data['card_post_balance'].zfill(10)
         transaction_unique = create_transaction_unique()
         topup_check_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 4, '', '', request.data)
-        print(topup_check_req_data.encode("ascii"))
         data = send_socket_receive_data(topup_check_req_data)
 
         request.data['message_type_id'] = message_type_id
@@ -645,7 +640,6 @@ class TopupCheckReqList(
             'deposit_balance': resp_data['deposit_balance'],
             'vsam_id': request.data['vsam_id'],
             'sign3': request.data['sign3'],
-            'sign2': request.data['sign2'],
             'tran_type': request.data['tran_type'].zfill(2),
             'card_number': request.data['card_number'],
             'card_algorithm_id': request.data['card_algorithm_id'],
@@ -655,8 +649,11 @@ class TopupCheckReqList(
             'topup_amount': request.data['topup_amount'].zfill(10),
             'card_pre_balance': request.data['card_pre_balance'].zfill(10),
             'card_post_balance': request.data['card_post_balance'].zfill(10),
+            'payment_id': request.data['payment_id'],
         }
+        
         serializer = TopupRespSerializer(data=OTU_second_resp_data)
+        print(serializer)
         if serializer.is_valid():
             serializer.save()
 
@@ -690,7 +687,6 @@ class TopupCheckRespList(
     serializer_class = TopupCheckRespSerializer
 
     def get(self, request, *args, **kwargs):
-        create_transaction_unique()
         return self.list(request, *args, **kwargs)
 
 """ **************************** """
@@ -702,7 +698,7 @@ def data_to_array_by_type(response_len_data, data):
     tmp = -1
     print("RESPONSE:\n")
     print(data)
-    print("\n\n\n")
+    print("\n\n\nRESPONSE ARRAY:\n")
     for k,v in response_len_data.items():
         print(k + ": " + (data[tmp:v+1]).decode())
         resp_data[k] = (data[tmp:v+1]).decode()
@@ -739,7 +735,7 @@ def send_socket_receive_data(req_data):
     except socket.error as exc:
         print("Caught exception socket.error : %s" % exc)
         data = data[:133] + str(exc).encode("ascii") + data[197:]
-
+    print("SOCKET RESPONSE FULL:" + data)
     return data
 
 def create_transaction_unique():
@@ -758,11 +754,7 @@ def create_transaction_unique():
             result3 = DepositBalanceInquiryReq.objects.aggregate(Max('transaction_unique'))['transaction_unique__max']
         if TransactionAggregationInquiryReq.objects.all().count() > 0:
             result4 = TransactionAggregationInquiryReq.objects.aggregate(Max('transaction_unique'))['transaction_unique__max']
-        tmp = ''
-        print(result1)
-        print(result2)
-        print(result3)
-        print(result4)
+        tmp = result
         if result1 > tmp:
             tmp = result1
         if result2 > tmp: 
@@ -772,7 +764,7 @@ def create_transaction_unique():
         if result4 > tmp: 
             tmp = result4
         result = tmp[0:6] + str(int(tmp[6:]) +1 ).zfill(6)
-    print("********" + result + "********")
+    print("\n\n\ntransaction_unique: " + result)
     return result
 
 def prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, req_type, auth_id='', working_key='', card_data = {}):
@@ -782,7 +774,6 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
     if req_type == 1:
         message_request_data = 'ID1234ID1234ID1222                                                                                                              '
     elif req_type == 2:
-        # print(encrypt_seed128(transaction_unique+merchant_information[6:10], auth_id).decode("ascii")+"\n\n\n")
         message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], auth_id, working_key).decode("ascii") + "                                "
     elif req_type == 3:        
         message_request_data_length = '141'
@@ -799,7 +790,6 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
         message_request_data = message_request_data + card_data['payment_method']
         message_request_data = message_request_data + '                                                   '
         transmission_date = card_data['transmission_datetime']
-        print(message_request_data + "\n")
     elif req_type == 4:
         message_request_data = ''
         message_request_data = message_request_data + card_data['tran_type']
@@ -821,8 +811,6 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
             last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
             last_vsam_id_hex = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id
             working_key = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].working_key
-        print("----------" + last_vsam_id_hex + "----------")
-        print("----------" + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + "-----")
         message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128_hex(transaction_unique+merchant_information[6:10], last_vsam_id_hex, working_key).decode("ascii") + "                                "
     elif req_type == 6:
         last_vsam_id = ''
@@ -830,8 +818,10 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
             last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
             working_key = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].working_key
         message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%Y%m%d') + "                        "
-        print(message_request_data)
-    print("\n\n\n\n\n" + transmission_date + "\n\n\n\n\n")
+    
+
+    print("\n\n\nMessage request data:\n" + message_request_data + "\n")
+    print("\n\n\nTransmission date: " + transmission_date + "\n")
     
     message_data = ''
     message_data = message_data + message_type_id
@@ -842,7 +832,6 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
     message_data = message_data + merchant_information
     message_data = message_data + message_request_data_length
     message_data = message_data + message_request_data
-    print(message_data + "\n")
     req_data = ''
     req_data = req_data + toStr(stx_hex)
     req_data = req_data + message_length
@@ -851,7 +840,7 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
     req_data = req_data + version
     req_data = req_data + message_data
     req_data = req_data + toStr(etx_hex)
-    print(req_data + "\n")
+    print("\n\n\nRequest data full: " + req_data + "\n")
     return req_data
 
 def get_last_vsam_id(is_hex = False):
@@ -871,10 +860,12 @@ import os.path,subprocess
 from subprocess import STDOUT,PIPE
 
 def compile_java(java_file):
+    print("\n\nJava-Compiling\n")
     print(subprocess.check_call(['pwd']))
     subprocess.check_call(['javac', java_file])
 
 def execute_java(java_file, data, stdin):
+    print("\n\nJava-Executing\n")
     java_class,ext = os.path.splitext(java_file)
     cmd = ['java', java_class, data]
     proc = subprocess.Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
