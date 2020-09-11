@@ -343,6 +343,7 @@ class ConnectionReqList(
         serializer = ConnectionRespSerializer(data=oid_resp_data)
         if serializer.is_valid():
             serializer.save()
+        oidSerialize = serializer.data
         message_type_id = '0300'
         primary_bit_map = '2200000008200010'
         processing_code = '486000'
@@ -390,7 +391,7 @@ class ConnectionReqList(
         serializer = ConnectionRespSerializer(data=pda_resp_data_model)
         if serializer.is_valid():
             serializer.save()
-        return Response({})
+        return Response({'response': { 'oid': oidSerialize, 'pda': serializer.data } })
 
 class ConnectionReqDetail(
     mixins.RetrieveModelMixin,
