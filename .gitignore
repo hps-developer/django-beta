@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+decryptSEED128.class
+
+encryptSEED128.class

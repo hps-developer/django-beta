@@ -13,6 +13,7 @@ from umoney.serializers import TopupReqSerializer, TopupRespSerializer, Connecti
 from umoney.serializers import TopupCheckReqSerializer, TopupCheckRespSerializer
 from umoney.serializers import DepositBalanceInquiryReqSerializer, DepositBalanceInquiryRespSerializer
 from umoney.serializers import TransactionAggregationInquiryReqSerializer, TransactionAggregationInquiryRespSerializer
+from umoney.constants import pos_array, pos_count
 import socket
 import functools
 from datetime import datetime
@@ -213,18 +214,22 @@ class UmoneyReqList(
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+
+        obj = self.create(request, *args, **kwargs)
+        vsam_num = obj.data['id'] % pos_count
+        current_terminal_id = pos_array[vsam_num]['terminal_id'] + '                              '
         message_type_id = '0200'
         primary_bit_map = '2200000008200010'
         processing_code = '183100'
         transaction_unique = create_transaction_unique()
-        topup_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 3, '', '', request.data)
+        topup_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 3, '', '', request.data, current_terminal_id)
         data = send_socket_receive_data(topup_req_data)
         request.data['message_type_id'] = message_type_id
         request.data['primary_bit_map'] = primary_bit_map
         request.data['processing_code'] = processing_code
         request.data['transaction_unique'] = transaction_unique
         request.data['transmission_datetime'] = topup_req_data[41:51]
-        request.data['terminal_id'] = merchant_information[0:10]
+        request.data['terminal_id'] = pos_array[vsam_num]['terminal_id']#merchant_information[0:10]
         request.data['request_data_len'] = '131'
         
         resp_data = data_to_array_by_type(OTU_first_response_len_arr, data)
@@ -236,7 +241,7 @@ class UmoneyReqList(
             'response_code': resp_data['response_code'],
             'transmission_datetime': resp_data['transmission_datetime'],
             'transaction_unique': resp_data['transaction_uniq'],
-            'terminal_id': merchant_information[0:10],
+            'terminal_id': request.data['terminal_id'],
             'result_message_len': resp_data['result_message_len'],
             'result_message_data': resp_data['result_message_data'],
             'tran_type': request.data['tran_type'],
@@ -248,15 +253,14 @@ class UmoneyReqList(
             'deposit_balance': resp_data['deposit_balance'],
             'payment_method': request.data['payment_method'],
             'sign1': request.data['sign1'],
-            'vsam_id': get_last_vsam_id(True),
-            'vsam_id_hex': get_last_vsam_id(False),
+            'vsam_id': pos_array[vsam_num]['vsam_id'],
+            'vsam_id_hex': toHex(pos_array[vsam_num]['vsam_id']),
             'payment_id': request.data['payment_id'],
         }
         serializer = TopupRespSerializer(data=OTU_first_resp_data)
         if serializer.is_valid():
             serializer.save()
 
-        obj = self.create(request, *args, **kwargs)
         return Response({ 'request': obj.data, 'result': serializer.data })
 
 class UmoneyReqDetail(
@@ -300,26 +304,33 @@ class ConnectionReqList(
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+        # return Response({pos_array[0]['terminal_id']})
+
+        obj = self.create(request, *args, **kwargs)
+        vsam_num = obj.data['id'] // 2 % pos_count
+        current_terminal_id = pos_array[vsam_num]['terminal_id'] + '                              '
+        current_auth_id = pos_array[vsam_num]['auth_id']
         message_type_id = '0300'
         primary_bit_map = '2200000008200010'
         processing_code = '481100'
         transaction_unique = create_transaction_unique()
-        req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 1)
+        req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 1, '', '', {},current_terminal_id)
         data = send_socket_receive_data(req_data)
         resp_data = data_to_array_by_type(OID_response_len_arr, data)
 
         encrypted_wk = resp_data['encrypted_wk']
-        res = decrypt_seed128(transaction_unique + merchant_information[6:10], encrypted_wk, master_key)
+        print("encrypted_wk: " + encrypted_wk )
+        res = decrypt_seed128(transaction_unique + current_terminal_id[6:10], encrypted_wk, master_key)
         decrypted_wk = res.decode("ascii")
+        print("decrypted_wk: " + decrypted_wk)
         request.data['message_type_id'] = message_type_id
         request.data['primary_bit_map'] = primary_bit_map
         request.data['processing_code'] = processing_code
-        request.data['merchant_information_terminal_id'] = merchant_information
-        request.data['terminal_id'] = merchant_information
+        request.data['merchant_information_terminal_id'] = current_terminal_id
+        request.data['terminal_id'] = current_terminal_id
         if request.data['pos_id'] == '':
             request.data['pos_id'] = pos_id
         request.data['transaction_unique'] = transaction_unique
-        obj = self.create(request, *args, **kwargs)
 
         oid_resp_data = {
             'message_type_id': resp_data['message_type_id'],
@@ -337,7 +348,7 @@ class ConnectionReqList(
             'minimum_topup_amount': resp_data['min_topup_amount'],
             'system_datetime': resp_data['system_datetime'],
             'pos_id': request.data['pos_id'], 
-            'terminal_id': merchant_information, 
+            'terminal_id': current_terminal_id, 
             'authentication_id': '', 
         }
         serializer = ConnectionRespSerializer(data=oid_resp_data)
@@ -348,17 +359,17 @@ class ConnectionReqList(
         primary_bit_map = '2200000008200010'
         processing_code = '486000'
         transaction_unique = create_transaction_unique()
-        req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 2, authentication_id, decrypted_wk)
+        req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 2, current_auth_id, decrypted_wk, {}, current_terminal_id)
         pda_req_data = {
             'message_type_id': message_type_id,
             'primary_bit_map': primary_bit_map,
             'processing_code': processing_code,
             'transmission_datetime': '',
             'transaction_unique': transaction_unique,
-            'merchant_info_terminal_id': merchant_information[0:10],
+            'merchant_info_terminal_id': current_terminal_id[0:10],
             'pos_id': pos_id, 
-            'terminal_id': merchant_information[0:10], 
-            'authentication_id': authentication_id, 
+            'terminal_id': current_terminal_id[0:10], 
+            'authentication_id': current_auth_id, 
             'vsam_id': ''
         }
         serializer = ConnectionReqSerializer(data=pda_req_data)
@@ -367,7 +378,12 @@ class ConnectionReqList(
 
         data = send_socket_receive_data(req_data)
         PDA_resp_data = data_to_array_by_type(PDA_response_len_arr, data)
-
+        print("encrypted_vsam: " + PDA_resp_data['encrypted_vsam'])
+        print("vsam_decrypted: " +  decrypt_seed128(PDA_resp_data['transaction_uniq'] + PDA_resp_data['merchant_info'][6:10], PDA_resp_data['encrypted_vsam'], decrypted_wk).decode("ascii"))
+        cur_vsam_id = ''
+        if PDA_resp_data['encrypted_vsam'] or PDA_resp_data['encrypted_vsam'] != '':
+            cur_vsam_id = decrypt_seed128(PDA_resp_data['transaction_uniq'] + PDA_resp_data['merchant_info'][6:10], PDA_resp_data['encrypted_vsam'], decrypted_wk).decode("ascii")
+        
         pda_resp_data_model = {
             'message_type_id': PDA_resp_data['message_type_id'],
             'primary_bit_map': PDA_resp_data['primary_bit_map'],
@@ -385,12 +401,13 @@ class ConnectionReqList(
             'system_datetime': '',
             'pos_id': pos_id, 
             'terminal_id': PDA_resp_data['merchant_info'][0:10], 
-            'authentication_id': authentication_id, 
-            'vsam_id': decrypt_seed128(PDA_resp_data['transaction_uniq'] + PDA_resp_data['merchant_info'][6:10], PDA_resp_data['encrypted_vsam'], decrypted_wk).decode("ascii")
+            'authentication_id': current_auth_id, 
+            'vsam_id': cur_vsam_id
         }
         serializer = ConnectionRespSerializer(data=pda_resp_data_model)
         if serializer.is_valid():
             serializer.save()
+            
         return Response({'response': { 'oid': oidSerialize, 'pda': serializer.data } })
 
 class ConnectionReqDetail(
@@ -507,7 +524,7 @@ class TransactionAggregationInquiryReqList(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
     generics.GenericAPIView):
-
+        
     queryset = TransactionAggregationInquiryReq.objects.all()
     serializer_class = TransactionAggregationInquiryReqSerializer
 
@@ -515,23 +532,27 @@ class TransactionAggregationInquiryReqList(
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+        obj = self.create(request, *args, **kwargs)    
+        vsam_num = obj.data['id'] % pos_count
+        current_terminal_id = pos_array[vsam_num]['terminal_id'] + '                              '
+        current_auth_id = pos_array[vsam_num]['auth_id']
         message_type_id = '0260'
         primary_bit_map = '2200000008200010'
         processing_code = '182100'
         transaction_unique = create_transaction_unique()
-        aggregation_inquiry_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 6, '', '', request.data)
+        aggregation_inquiry_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 6, '', '', request.data, current_terminal_id)
         request.data['message_type_id'] = message_type_id
         request.data['primary_bit_map'] = primary_bit_map
         request.data['processing_code'] = processing_code
         request.data['transaction_unique'] = transaction_unique
         request.data['transmission_datetime'] = aggregation_inquiry_req_data[41:51]
-        request.data['terminal_id'] = merchant_information[0:10]
+        request.data['terminal_id'] = current_terminal_id[0:10]
         request.data['request_data_len'] = '131'
         if request.data['pos_id'] == '':
             request.data['pos_id'] = pos_id
         if request.data['closing_date'] == '':
             request.data['closing_date'] = (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%Y%m%d')
-        obj = self.create(request, *args, **kwargs)
+        
         if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() <= 0: 
             return Response({ 'message': 'no vsam_id found, please make connection to umoney','request': obj.data, 'result': {}}, status=status.HTTP_404_NOT_FOUND)
         print(aggregation_inquiry_req_data.encode("ascii"))
@@ -545,7 +566,7 @@ class TransactionAggregationInquiryReqList(
             'response_code': resp_data['response_code'],
             'transmission_datetime': resp_data['transmission_datetime'],
             'transaction_unique': resp_data['transaction_uniq'],
-            'terminal_id': merchant_information[0:10],
+            'terminal_id': current_terminal_id[0:10],
             'result_message_len': resp_data['result_message_len'],
             'result_message_data': resp_data['result_message_data'],
             'pos_id': request.data['pos_id'],
@@ -622,9 +643,9 @@ class TopupCheckReqList(
         request.data['processing_code'] = processing_code
         request.data['transaction_unique'] = transaction_unique
         request.data['transmission_datetime'] = topup_check_req_data[41:51]
-        request.data['terminal_id'] = merchant_information[0:10]
+        request.data['terminal_id'] = ''#merchant_information[0:10]
         request.data['request_data_len'] = '131'
-        request.data['vsam_id'] = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
+        request.data['vsam_id'] = ''#toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
         
         resp_data = data_to_array_by_type(OTU_second_response_len_arr, data)
         OTU_second_resp_data = {
@@ -635,7 +656,7 @@ class TopupCheckReqList(
             'response_code': resp_data['response_code'],
             'transmission_datetime': resp_data['transmission_datetime'],
             'transaction_unique': resp_data['transaction_uniq'],
-            'terminal_id': merchant_information[0:10],
+            'terminal_id': '',
             'result_message_len': resp_data['result_message_len'],
             'result_message_data': resp_data['result_message_data'],
             'deposit_balance': resp_data['deposit_balance'],
@@ -770,14 +791,14 @@ def create_transaction_unique():
     print("\n\n\ntransaction_unique: " + result)
     return result
 
-def prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, req_type, auth_id='', working_key='', card_data = {}):
+def prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, req_type, auth_id='', working_key='', card_data = {}, current_terminal_id = ''):
     message_request_data = 'ID1234ID1234ID1222                                                                                                              '    
     message_request_data_length = '131'
     transmission_date = (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%m%d%H%M%S')
     if req_type == 1:
         message_request_data = 'ID1234ID1234ID1222                                                                                                              '
     elif req_type == 2:
-        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], auth_id, working_key).decode("ascii") + "                                "
+        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+current_terminal_id[6:10], auth_id, working_key).decode("ascii") + "                                "
     elif req_type == 3:        
         message_request_data_length = '141'
         message_request_data = ''
@@ -814,13 +835,13 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
             last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
             last_vsam_id_hex = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id
             working_key = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].working_key
-        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128_hex(transaction_unique+merchant_information[6:10], last_vsam_id_hex, working_key).decode("ascii") + "                                "
+        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128_hex(transaction_unique+current_terminal_id[6:10], last_vsam_id_hex, working_key).decode("ascii") + "                                "
     elif req_type == 6:
         last_vsam_id = ''
         if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() > 0:
             last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
             working_key = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].working_key
-        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+merchant_information[6:10], last_vsam_id, working_key).decode("ascii") + (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%Y%m%d') + "                        "
+        message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+current_terminal_id[6:10], last_vsam_id, working_key).decode("ascii") + (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%Y%m%d') + "                        "
     
 
     print("\n\n\nMessage request data:\n" + message_request_data + "\n")
@@ -832,7 +853,7 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
     message_data = message_data + processing_code
     message_data = message_data + transmission_date
     message_data = message_data + transaction_unique
-    message_data = message_data + merchant_information
+    message_data = message_data + current_terminal_id
     message_data = message_data + message_request_data_length
     message_data = message_data + message_request_data
     req_data = ''
