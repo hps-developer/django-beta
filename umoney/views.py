@@ -634,10 +634,13 @@ class TopupCheckReqList(
         request.data['card_transaction_seq_number'] = request.data['card_transaction_seq_number'].zfill(10)
         request.data['card_pre_balance'] = request.data['card_pre_balance'].zfill(10)
         request.data['card_post_balance'] = request.data['card_post_balance'].zfill(10)
-        transaction_unique = create_transaction_unique()
-        topup_check_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 4, '', '', request.data)
-        data = send_socket_receive_data(topup_check_req_data)
+        
+        current_terminal_id = TopupResp.objects.all().filter(card_number=request.data['card_number']).exclude(terminal_id='').order_by('-created').terminal_id + '                              '
 
+        transaction_unique = create_transaction_unique()
+        topup_check_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 4, '', '', request.data, current_terminal_id)
+        data = send_socket_receive_data(topup_check_req_data)
+        
         request.data['message_type_id'] = message_type_id
         request.data['primary_bit_map'] = primary_bit_map
         request.data['processing_code'] = processing_code
@@ -674,7 +677,7 @@ class TopupCheckReqList(
             'payment_id': request.data['payment_id'],
         }
         
-        serializer = TopupRespSerializer(data=OTU_second_resp_data)
+        serializer = TopupCheckRespSerializer(data=OTU_second_resp_data)
         print(serializer)
         if serializer.is_valid():
             serializer.save()
