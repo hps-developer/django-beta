@@ -634,8 +634,9 @@ class TopupCheckReqList(
         request.data['card_transaction_seq_number'] = request.data['card_transaction_seq_number'].zfill(10)
         request.data['card_pre_balance'] = request.data['card_pre_balance'].zfill(10)
         request.data['card_post_balance'] = request.data['card_post_balance'].zfill(10)
-        
-        current_terminal_id = TopupResp.objects.all().filter(card_number=request.data['card_number']).exclude(terminal_id='').order_by('-created').terminal_id + '                              '
+        current_terminal_id = '0000000000                              '
+        if TopupResp.objects.all().filter(card_number=request.data['card_number']).exclude(terminal_id='').order_by('-created').count() > 0:
+            current_terminal_id = TopupResp.objects.all().filter(card_number=request.data['card_number']).exclude(terminal_id='').order_by('-created')[0].terminal_id + '                              '
 
         transaction_unique = create_transaction_unique()
         topup_check_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 4, '', '', request.data, current_terminal_id)
