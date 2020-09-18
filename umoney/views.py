@@ -640,13 +640,13 @@ class TopupCheckReqList(
         transaction_unique = create_transaction_unique()
         topup_check_req_data = prepare_req_data(message_type_id, primary_bit_map, processing_code, transaction_unique, 4, '', '', request.data, current_terminal_id)
         data = send_socket_receive_data(topup_check_req_data)
-        
+
         request.data['message_type_id'] = message_type_id
         request.data['primary_bit_map'] = primary_bit_map
         request.data['processing_code'] = processing_code
         request.data['transaction_unique'] = transaction_unique
         request.data['transmission_datetime'] = topup_check_req_data[41:51]
-        request.data['terminal_id'] = ''#merchant_information[0:10]
+        request.data['terminal_id'] = current_terminal_id[0:10]#merchant_information[0:10]
         request.data['request_data_len'] = '131'
         request.data['vsam_id'] = ''#toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
         
@@ -659,7 +659,7 @@ class TopupCheckReqList(
             'response_code': resp_data['response_code'],
             'transmission_datetime': resp_data['transmission_datetime'],
             'transaction_unique': resp_data['transaction_uniq'],
-            'terminal_id': '',
+            'terminal_id': current_terminal_id[0:10],
             'result_message_len': resp_data['result_message_len'],
             'result_message_data': resp_data['result_message_data'],
             'deposit_balance': resp_data['deposit_balance'],
