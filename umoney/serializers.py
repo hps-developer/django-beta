@@ -195,7 +195,7 @@ class TopupCheckRespSerializer(serializers.ModelSerializer):
             'topup_amount',
             'card_pre_balance',
             'card_post_balance',
-            'paymentId',
+            'payment_id',
             ]
 
 class ConnectionReqSerializer(serializers.ModelSerializer):
