@@ -843,8 +843,8 @@ def prepare_req_data(message_type_id, primary_bit_map, processing_code, transact
     elif req_type == 6:
         last_vsam_id = ''
         if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() > 0:
-            last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].vsam_id)
-            working_key = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).order_by('-created')[0].working_key
+            last_vsam_id = toStr(ConnectionResp.objects.all().filter(processing_code=PDA_processing_code, terminal_id=current_terminal_id[0:10]).order_by('-created')[0].vsam_id)
+            working_key = ConnectionResp.objects.all().filter(processing_code=PDA_processing_code, terminal_id=current_terminal_id[0:10]).order_by('-created')[0].working_key
         message_request_data = 'ID1234ID1234ID1222                                              ' + encrypt_seed128(transaction_unique+current_terminal_id[6:10], last_vsam_id, working_key).decode("ascii") + (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%Y%m%d') + "                        "
     
 
