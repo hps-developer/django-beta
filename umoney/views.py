@@ -1,10 +1,13 @@
 from django.shortcuts import render
 
 # Create your views here.
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
 from rest_framework import mixins
 from rest_framework import generics
+from rest_framework import filters
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from umoney.models import TopupReq, TopupResp, ConnectionReq, ConnectionResp
 from umoney.models import TopupCheckReq, TopupCheckResp
 from umoney.models import DepositBalanceInquiryReq, DepositBalanceInquiryResp
@@ -19,6 +22,10 @@ import functools
 from datetime import datetime
 import pytz
 from django.db.models import Max
+
+
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size_query_param = 'page_size'  # items per page
 
 master_key = '30313233343536373839414243444546'
 
@@ -209,6 +216,7 @@ class UmoneyReqList(
 
     queryset = TopupReq.objects.all()
     serializer_class = TopupReqSerializer
+    pagination_class = CustomPageNumberPagination
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -288,6 +296,11 @@ class TopupRespList(
 
     queryset = TopupResp.objects.all()
     serializer_class = TopupRespSerializer
+    pagination_class = CustomPageNumberPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['terminal_id', 'id', 'response_code']
+    search_fields = ['card_number']
+    ordering_fields = ['created']
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -299,6 +312,11 @@ class ConnectionReqList(
 
     queryset = ConnectionReq.objects.all()
     serializer_class = ConnectionReqSerializer
+    pagination_class = CustomPageNumberPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['terminal_id', 'id']
+    search_fields = ['processing_code']
+    ordering_fields = ['created']
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -435,6 +453,11 @@ class ConnectionRespList(
 
     queryset = ConnectionResp.objects.all()
     serializer_class = ConnectionRespSerializer
+    pagination_class = CustomPageNumberPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['terminal_id', 'id']
+    search_fields = ['system_datetime']
+    ordering_fields = ['created']
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -515,6 +538,7 @@ class DepositBalanceInquiryRespList(
 
     queryset = DepositBalanceInquiryResp.objects.all()
     serializer_class = DepositBalanceInquiryRespSerializer
+    pagination_class = CustomPageNumberPagination
 
     def get(self, request, *args, **kwargs):
         create_transaction_unique()
@@ -527,6 +551,11 @@ class TransactionAggregationInquiryReqList(
         
     queryset = TransactionAggregationInquiryReq.objects.all()
     serializer_class = TransactionAggregationInquiryReqSerializer
+    pagination_class = CustomPageNumberPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['terminal_id', 'id']
+    search_fields = ['transmission_datetime']
+    ordering_fields = ['created']
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -610,6 +639,11 @@ class TransactionAggregationInquiryRespList(
 
     queryset = TransactionAggregationInquiryResp.objects.all()
     serializer_class = TransactionAggregationInquiryRespSerializer
+    pagination_class = CustomPageNumberPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['terminal_id', 'id', 'response_code']
+    search_fields = ['transmission_datetime']
+    ordering_fields = ['created']
 
     def get(self, request, *args, **kwargs):
         create_transaction_unique()
@@ -622,6 +656,7 @@ class TopupCheckReqList(
 
     queryset = TopupCheckReq.objects.all()
     serializer_class = TopupCheckReqSerializer
+    pagination_class = CustomPageNumberPagination
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -711,6 +746,7 @@ class TopupCheckRespList(
 
     queryset = TopupCheckResp.objects.all()
     serializer_class = TopupCheckRespSerializer
+    pagination_class = CustomPageNumberPagination
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
