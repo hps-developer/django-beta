@@ -561,8 +561,9 @@ class TransactionAggregationInquiryReqList(
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        obj = self.create(request, *args, **kwargs)    
-        vsam_num = obj.data['id'] % pos_count
+        latest_id = TransactionAggregationInquiryReq.objects.latest('id').id
+        print(latest_id)
+        vsam_num = latest_id % pos_count
         current_terminal_id = pos_array[vsam_num]['terminal_id'] + '                              '
         current_auth_id = pos_array[vsam_num]['auth_id']
         message_type_id = '0260'
@@ -582,6 +583,7 @@ class TransactionAggregationInquiryReqList(
         if request.data['closing_date'] == '':
             request.data['closing_date'] = (datetime.now(pytz.timezone('Asia/Ulaanbaatar'))).strftime('%Y%m%d')
         
+        obj = self.create(request, *args, **kwargs) 
         if ConnectionResp.objects.all().filter(processing_code=PDA_processing_code).count() <= 0: 
             return Response({ 'message': 'no vsam_id found, please make connection to umoney','request': obj.data, 'result': {}}, status=status.HTTP_404_NOT_FOUND)
         print(aggregation_inquiry_req_data.encode("ascii"))
