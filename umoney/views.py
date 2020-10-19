@@ -554,7 +554,7 @@ class TransactionAggregationInquiryReqList(
     pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['terminal_id', 'id']
-    search_fields = ['transmission_datetime']
+    search_fields = ['closing_date']
     ordering_fields = ['created']
 
     def get(self, request, *args, **kwargs):
@@ -644,7 +644,7 @@ class TransactionAggregationInquiryRespList(
     pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['terminal_id', 'id', 'response_code']
-    search_fields = ['transmission_datetime']
+    search_fields = ['closing_date']
     ordering_fields = ['created']
 
     def get(self, request, *args, **kwargs):
