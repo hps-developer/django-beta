@@ -208,7 +208,7 @@ class TransactionAggregationInquiryResp(models.Model):
     transmission_datetime = models.CharField(max_length=10, blank=True, default='')
     transaction_unique = models.CharField(max_length=12, blank=True, default='')
     terminal_id = models.CharField(max_length=40, blank=True, default='')
-    pos_id = models.CharField(max_length=64, blank=True, default='ID1234ID1234ID1222')
+    pos_id = models.CharField(max_length=64, blank=True, default='HIPAYPOSID12345678')
     topup_count = models.CharField(max_length=5, blank=True, default='')
     topup_amount = models.CharField(max_length=10, blank=True, default='')
     topup_cancellation_count = models.CharField(max_length=5, blank=True, default='')
@@ -217,6 +217,7 @@ class TransactionAggregationInquiryResp(models.Model):
     payment_amount = models.CharField(max_length=10, blank=True, default='')
     payment_cancellation_count = models.CharField(max_length=5, blank=True, default='')
     payment_cancellation_amount = models.CharField(max_length=10, blank=True, default='')
+    closing_date = models.CharField(max_length=8, blank=True, default='')
 
     class Meta:
         ordering = ['created']

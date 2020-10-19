@@ -324,4 +324,5 @@ class TransactionAggregationInquiryRespSerializer(serializers.ModelSerializer):
             'payment_amount',
             'payment_cancellation_count',
             'payment_cancellation_amount',
+            'closing_date',
             ]

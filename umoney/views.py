@@ -554,7 +554,7 @@ class TransactionAggregationInquiryReqList(
     pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['terminal_id', 'id']
-    search_fields = ['transmission_datetime']
+    search_fields = ['closing_date']
     ordering_fields = ['created']
 
     def get(self, request, *args, **kwargs):
@@ -609,6 +609,7 @@ class TransactionAggregationInquiryReqList(
             'payment_amount': resp_data['payment_amount'],
             'payment_cancellation_count': resp_data['payment_cancellation_count'],
             'payment_cancellation_amount': resp_data['payment_cancellation_amount'],
+            'closing_date': request.data['closing_date'],
         }
         serializer = TransactionAggregationInquiryRespSerializer(data=TAI_resp_data)
         if serializer.is_valid():
@@ -644,7 +645,7 @@ class TransactionAggregationInquiryRespList(
     pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['terminal_id', 'id', 'response_code']
-    search_fields = ['transmission_datetime']
+    search_fields = ['closing_date']
     ordering_fields = ['created']
 
     def get(self, request, *args, **kwargs):
