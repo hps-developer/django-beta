@@ -609,6 +609,7 @@ class TransactionAggregationInquiryReqList(
             'payment_amount': resp_data['payment_amount'],
             'payment_cancellation_count': resp_data['payment_cancellation_count'],
             'payment_cancellation_amount': resp_data['payment_cancellation_amount'],
+            'closing_date': request.data['closing_date'],
         }
         serializer = TransactionAggregationInquiryRespSerializer(data=TAI_resp_data)
         if serializer.is_valid():
