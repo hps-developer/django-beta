@@ -750,8 +750,9 @@ class TopupCheckRespList(
     queryset = TopupCheckResp.objects.all()
     serializer_class = TopupCheckRespSerializer
     pagination_class = CustomPageNumberPagination
-    filterset_fields = ['terminal_id', 'id', 'response_code']
-    search_fields = ['card_number']
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['terminal_id', 'id', 'response_code', 'card_number']
+    search_fields = ['transmission_datetime']
     ordering_fields = ['transmission_datetime']
 
     def get(self, request, *args, **kwargs):
