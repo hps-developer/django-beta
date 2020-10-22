@@ -750,6 +750,9 @@ class TopupCheckRespList(
     queryset = TopupCheckResp.objects.all()
     serializer_class = TopupCheckRespSerializer
     pagination_class = CustomPageNumberPagination
+    filterset_fields = ['terminal_id', 'id', 'response_code']
+    search_fields = ['card_number']
+    ordering_fields = ['transmission_datetime']
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
