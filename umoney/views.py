@@ -590,7 +590,7 @@ class TransactionAggregationInquiryReqList(
         data = send_socket_receive_data(aggregation_inquiry_req_data)
         resp_data = data_to_array_by_type(TAI_response_len_arr, data)
 
-        if resp_data['response_code'] !== '00' :
+        if resp_data['response_code'] != '00':
             data = send_socket_receive_data(aggregation_inquiry_req_data)
             resp_data = data_to_array_by_type(TAI_response_len_arr, data)
 
