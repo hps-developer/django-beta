@@ -349,7 +349,7 @@ class ConnectionReqList(
         if request.data['pos_id'] == '':
             request.data['pos_id'] = pos_id
         request.data['transaction_unique'] = transaction_unique
-
+        
         oid_resp_data = {
             'message_type_id': resp_data['message_type_id'],
             'primary_bit_map': resp_data['primary_bit_map'],
@@ -589,6 +589,11 @@ class TransactionAggregationInquiryReqList(
         print(aggregation_inquiry_req_data.encode("ascii"))
         data = send_socket_receive_data(aggregation_inquiry_req_data)
         resp_data = data_to_array_by_type(TAI_response_len_arr, data)
+
+        if resp_data['response_code'] !== '00' :
+            data = send_socket_receive_data(aggregation_inquiry_req_data)
+            resp_data = data_to_array_by_type(TAI_response_len_arr, data)
+
         TAI_resp_data = {
             'comment': request.data['comment'], 
             'message_type_id': resp_data['message_type_id'], 
