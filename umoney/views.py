@@ -222,9 +222,8 @@ class UmoneyReqList(
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-
-        obj = self.create(request, *args, **kwargs)
-        vsam_num = obj.data['id'] % pos_count
+        latest_id = TopupReq.objects.latest('id').id
+        vsam_num = (latest_id+1) % pos_count
         current_terminal_id = pos_array[vsam_num]['terminal_id'] + '                              '
         message_type_id = '0200'
         primary_bit_map = '2200000008200010'
@@ -239,6 +238,7 @@ class UmoneyReqList(
         request.data['transmission_datetime'] = topup_req_data[41:51]
         request.data['terminal_id'] = pos_array[vsam_num]['terminal_id']#merchant_information[0:10]
         request.data['request_data_len'] = '131'
+        obj = self.create(request, *args, **kwargs)
         
         resp_data = data_to_array_by_type(OTU_first_response_len_arr, data)
         OTU_first_resp_data = {
@@ -750,6 +750,10 @@ class TopupCheckRespList(
     queryset = TopupCheckResp.objects.all()
     serializer_class = TopupCheckRespSerializer
     pagination_class = CustomPageNumberPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['terminal_id', 'id', 'response_code', 'card_number']
+    search_fields = ['transmission_datetime']
+    ordering_fields = ['transmission_datetime']
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
