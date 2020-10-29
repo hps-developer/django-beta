@@ -137,6 +137,7 @@ class TopupRespSerializer(serializers.ModelSerializer):
             'vsam_id',
             'vsam_id_hex',
             'payment_id',
+            'pos_id',
             ]
 
 class TopupCheckReqSerializer(serializers.ModelSerializer):
