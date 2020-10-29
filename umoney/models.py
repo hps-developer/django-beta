@@ -85,6 +85,7 @@ class TopupResp(models.Model):
     vsam_id = models.CharField(max_length=32, blank=True, default='')
     vsam_id_hex = models.CharField(max_length=32, blank=True, default='')
     payment_id = models.CharField(max_length=36, blank=True, default='')
+    pos_id = models.CharField(max_length=18, blank=True, default='')
 
     class Meta:
         ordering = ['created']
