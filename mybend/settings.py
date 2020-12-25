@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django_filters',
     'umoney',
     'quickstart',
+    'identificationRecognition.apps.IdentificationrecognitionConfig'
 ]
 
 REST_FRAMEWORK = {
