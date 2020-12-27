@@ -27,4 +27,5 @@ urlpatterns = [
     path('api-umoney/', include('umoney.urls')),
     path('api-quickstart/', include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    path('', include('identificationRecognition.urls')),
 ]
