@@ -14,7 +14,6 @@ from matplotlib import image
 from skimage.metrics import structural_similarity as ssim
 import matplotlib.pyplot as plt
 import matplotlib
-matplotlib.use('tkagg')
 import numpy as np
 import cv2
 from skimage.filters import threshold_local
@@ -149,54 +148,69 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
     def findTemplate(self, image, template):
         image = imread(image, pilmode="RGB")
         image = image.copy()
-        template = imread(template, pilmode="RGB")
-        template = template.copy()
+        
+        template_original = imread(template, pilmode="RGB")
+        template_rotate_90_counterclockwise = cv2.rotate(template_original, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        template_rotate_90_clockwise = cv2.rotate(template_original, cv2.ROTATE_90_CLOCKWISE)
+        template_rotate_180 = cv2.rotate(template_original, cv2.ROTATE_180)
 
-        template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-        template = cv2.Canny(template, 50, 200)
-        (tH, tW) = template.shape[:2]
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        found = None
-        haveFoundBool = False
-        # loop over the scales of the image
-        for scale in np.linspace(0.2, 1.0, 10)[::-1]:
-            # resize the image according to the scale, and keep track
-            # of the ratio of the resizing
-            resized = imutils.resize(gray, width = int(gray.shape[1] * scale))
-            r = gray.shape[1] / float(resized.shape[1])
-            # if the resized image is smaller than the template, then break
-            # from the loop
-            if resized.shape[0] < tH or resized.shape[1] < tW:
-                break
+        template_original = template_original.copy()
+        template_rotate_90_counterclockwise = template_rotate_90_counterclockwise.copy()
+        template_rotate_90_clockwise = template_rotate_90_clockwise.copy()
+        template_rotate_180 = template_rotate_180.copy()
 
-            # detect edges in the resized, grayscale image and apply template
-            # matching to find the template in the image
-            edged = cv2.Canny(resized, 50, 200)
-            result = cv2.matchTemplate(edged, template, cv2.TM_CCOEFF_NORMED)
+        templateArray = []
+        templateArray.append(template_original)
+        templateArray.append(template_rotate_90_counterclockwise)
+        templateArray.append(template_rotate_90_clockwise)
+        templateArray.append(template_rotate_180)
 
-            (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result, None)
+        for template in templateArray:
+            template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+            template = cv2.Canny(template, 50, 200)
+            (tH, tW) = template.shape[:2]
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            found = None
+            haveFoundBool = False
+            # loop over the scales of the image
+            for scale in np.linspace(0.2, 1.0, 10)[::-1]:
+                # resize the image according to the scale, and keep track
+                # of the ratio of the resizing
+                resized = imutils.resize(gray, width = int(gray.shape[1] * scale))
+                r = gray.shape[1] / float(resized.shape[1])
+                # if the resized image is smaller than the template, then break
+                # from the loop
+                if resized.shape[0] < tH or resized.shape[1] < tW:
+                    break
 
-            # if new maximum correlation value is found, then update
-            # the bookkeeping variable
-            if found is None or maxVal > found[0]:
-                found = (maxVal, maxLoc, r)
-                # checking if it's a good match, value of 0.1 selected based on testings
-                if (maxVal > 0.1):
-                    haveFoundBool = True
+                # detect edges in the resized, grayscale image and apply template
+                # matching to find the template in the image
+                edged = cv2.Canny(resized, 50, 200)
+                result = cv2.matchTemplate(edged, template, cv2.TM_CCOEFF_NORMED)
 
-        # uncomment below to draw detected object (Mongolian ID)
+                (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result, None)
 
-        # (_, maxLoc, r) = found
-        # (startX, startY) = (int(maxLoc[0] * r), int(maxLoc[1] * r))
-        # (endX, endY) = (int((maxLoc[0] + tW) * r), int((maxLoc[1] + tH) * r))
-        # # draw a bounding box around the detected result and display the image
-        # cv2.rectangle(image, (startX, startY), (endX, endY), (0, 0, 255), 2)
-        # cv2.imshow("Image", image)
-        # cv2.waitKey(0)
+                # if new maximum correlation value is found, then update
+                # the bookkeeping variable
+                if found is None or maxVal > found[0]:
+                    found = (maxVal, maxLoc, r)
+                    # checking if it's a good match, value of 0.1 selected based on testings
+                    if (maxVal > 0.1):
+                        # haveFoundBool = True
+                        return True
 
-        return haveFoundBool
+            # uncomment below to draw detected object (Mongolian ID)
 
-        # return True
+            # (_, maxLoc, r) = found
+            # (startX, startY) = (int(maxLoc[0] * r), int(maxLoc[1] * r))
+            # (endX, endY) = (int((maxLoc[0] + tW) * r), int((maxLoc[1] + tH) * r))
+            # # draw a bounding box around the detected result and display the image
+            # cv2.rectangle(image, (startX, startY), (endX, endY), (0, 0, 255), 2)
+            # cv2.imshow("Image", image)
+            # cv2.waitKey(0)
+
+            # return haveFoundBool
+        return False
 
     @action(methods=['post'], detail=False)
     
