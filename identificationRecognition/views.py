@@ -227,10 +227,10 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
             except:
                 return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading template and/or ID.'})
             
-            try:
-                doesExist = self.findTemplate(image, template)
-            except:
-                return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images.'})
+            #try:
+            doesExist = self.findTemplate(image, template)
+            #except:
+             #   return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images.'})
 
 
 
