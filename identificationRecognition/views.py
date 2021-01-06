@@ -247,8 +247,6 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
             except:
                 return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images.'})
 
-
-
             return Response({'code': '201', 'status': 'success', 'id_status': status})
         else:
             print(serializer.errors)
