@@ -236,7 +236,6 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
             
             try:
                 result = self.findTemplate(image, template)
-                print('result: ' + str(result))
                 status = ''
                 if (result > 0.1):
                     status = 'valid'
