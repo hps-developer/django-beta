@@ -165,15 +165,16 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
         templateArray.append(template_rotate_90_clockwise)
         templateArray.append(template_rotate_180)
 
+        maxMaxVal = 0
         for template in templateArray:
             template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
             template = cv2.Canny(template, 50, 200)
             (tH, tW) = template.shape[:2]
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             found = None
-            haveFoundBool = False
+
             # loop over the scales of the image
-            for scale in np.linspace(0.2, 1.0, 10)[::-1]:
+            for scale in np.linspace(0.2, 1.0, 15)[::-1]:
                 # resize the image according to the scale, and keep track
                 # of the ratio of the resizing
                 resized = imutils.resize(gray, width = int(gray.shape[1] * scale))
@@ -194,11 +195,17 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
                 # the bookkeeping variable
                 if found is None or maxVal > found[0]:
                     found = (maxVal, maxLoc, r)
+                    print(maxVal)
                     # checking if it's a good match, value of 0.1 selected based on testings
-                    if (maxVal > 0.1):
-                        # haveFoundBool = True
-                        return True
+                    # if (maxVal > 0.1):
+                    #     haveFoundBool = True
 
+            
+            if found[0] > maxMaxVal:
+                maxMaxVal = found[0]
+            
+            if maxMaxVal > 0.1:
+                return maxMaxVal
             # uncomment below to draw detected object (Mongolian ID)
 
             # (_, maxLoc, r) = found
@@ -210,7 +217,7 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
             # cv2.waitKey(0)
 
             # return haveFoundBool
-        return False
+        return maxMaxVal
 
     @action(methods=['post'], detail=False)
     
@@ -228,13 +235,22 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
                 return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading template and/or ID.'})
             
             try:
-                doesExist = self.findTemplate(image, template)
+                result = self.findTemplate(image, template)
+                print('result: ' + str(result))
+                status = ''
+                if (result > 0.1):
+                    status = 'valid'
+                elif (result > 0.08 and result <= 0.1):
+                    status = 'revision_needed'
+                elif (result <= 0.08):
+                    status = 'invalid'
+
             except:
                 return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images.'})
 
 
 
-            return Response({'code': '201', 'status': 'success', 'isValidId': doesExist})
+            return Response({'code': '201', 'status': 'success', 'id_status': status})
         else:
             print(serializer.errors)
         
