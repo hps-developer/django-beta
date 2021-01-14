@@ -25,6 +25,7 @@ def countFace(selfie):
     # orig = image.copy()
     # image = imutils.resize(image, height = 700)
 
+
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     faces = faceCascade.detectMultiScale(
         gray,

@@ -219,6 +219,7 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
 
             # return haveFoundBool
         return maxMaxVal
+        
 
     @action(methods=['post'], detail=False)
     def findTemplateInImage(self, request):
