@@ -24,6 +24,7 @@ import PIL
 import requests
 from io import BytesIO
 from imageio import imread
+from . import face_detection
 
 class IdentificationRecognitionView(viewsets.ModelViewSet):
     queryset = IdentificationRecognition.objects.all()
@@ -218,22 +219,19 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
 
             # return haveFoundBool
         return maxMaxVal
+        
 
     @action(methods=['post'], detail=False)
-    
-
     def findTemplateInImage(self, request):
         print(request.data)
         serializer = IdentificationRecognitionSerializer(data=request.data)
         print(serializer)
-
         if serializer.is_valid():
             try:
                 template = request.data.get('template')
                 image = request.data.get('idImage')
             except:
                 return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading template and/or ID.'})
-            
             try:
                 result = self.findTemplate(image, template)
                 status = ''
@@ -243,12 +241,29 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
                     status = 'revision_needed'
                 elif (result <= 0.08):
                     status = 'invalid'
-
             except:
-                return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images.'})
-
+                return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
             return Response({'code': '201', 'status': 'success', 'id_status': status})
         else:
             print(serializer.errors)
+        return Response({'status': 'error', 'message': 'invalid request'})
+
+
+
+    @action(methods=['post'], detail=False)
+    def faceDetection(self, request):
         
+        if 'selfie' in request.data:
+            try:
+                selfie = request.data.get('selfie')
+            except:
+                return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while getting selfie'})
+        
+            try:
+                face_count = face_detection.countFace(selfie)
+            except:
+                return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
+            return Response({'code': '201', 'status': 'success', 'face_found': face_count})
+        else:
+            print('value of input [selfie] is not in the request')
         return Response({'status': 'error', 'message': 'invalid request'})
