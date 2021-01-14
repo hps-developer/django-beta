@@ -264,7 +264,7 @@ class UmoneyReqList(
             'vsam_id': pos_array[vsam_num]['vsam_id'],
             'vsam_id_hex': toHex(pos_array[vsam_num]['vsam_id']),
             'payment_id': request.data['payment_id'],
-            'pos_id': pos_array[vsam_num]['pos_id']
+            'pos_id': pos_id
         }
         serializer = TopupRespSerializer(data=OTU_first_resp_data)
         if serializer.is_valid():
