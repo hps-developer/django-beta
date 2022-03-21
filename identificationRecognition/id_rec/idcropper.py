@@ -1,6 +1,4 @@
-from re import U
 import cv2 as cv
-import torch
 import imutils
 import sys
 import os

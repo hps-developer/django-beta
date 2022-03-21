@@ -1,6 +1,5 @@
 from __future__ import print_function
 from django.shortcuts import render
-
 # Create your views here.
 from rest_framework.decorators import action
 from rest_framework import viewsets
@@ -16,19 +15,25 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 import cv2
-from skimage.filters import threshold_local
-import argparse
 import imutils
-from PIL import Image
-import PIL
 import requests
-from io import BytesIO
 from imageio import imread
-from . import face_detection
+from . import face_detection 
+from .id_rec import idcropper
+import torch
+import os , os.path, sys
+
 
 class IdentificationRecognitionView(viewsets.ModelViewSet):
     queryset = IdentificationRecognition.objects.all()
     serializer_class = IdentificationRecognitionSerializer
+
+    def cropImageLocal(img):
+        model = torch.hub.load('ultralytics/yolov5', 'custom', path = '/id_rec/yolov5/runs/train/exp9/weights/best.pt', force_reload=False)
+        test = idcropper.Cropper(img,model)
+        linku =  test.crop()
+        return linku
+        
 
     def mse(self, imageA, imageB):
         
@@ -241,6 +246,26 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
                     status = 'revision_needed'
                 elif (result <= 0.08):
                     status = 'invalid'
+            except:
+                return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
+            return Response({'code': '201', 'status': 'success', 'id_status': status})
+        else:
+            print(serializer.errors)
+        return Response({'status': 'error', 'message': 'invalid request'})
+
+    @action(methods=['post'], detail=False)
+    def cropImage(self, request):
+        print(request.data)
+        serializer = IdentificationRecognitionSerializer(data=request.data)
+        print(serializer)
+    
+        if serializer.is_valid():
+            try:
+                image = request.data.get('idImage')
+            except:
+                return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading template and/or ID.'})
+            try:
+                status = self.cropImageLocal(image)
             except:
                 return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
             return Response({'code': '201', 'status': 'success', 'id_status': status})
