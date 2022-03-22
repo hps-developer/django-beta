@@ -24,9 +24,9 @@ BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 SECRET_KEY = '((w^-@r@6p58!v@0ydt@wuj62$qug4or$whti6im%u926)1z!4'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['0.0.0.0', '127.0.0.1', '192.168.101.78']
+ALLOWED_HOSTS = ['0.0.0.0', '127.0.0.1', '192.168.106.75']
 
 
 # Application definition
@@ -89,8 +89,12 @@ WSGI_APPLICATION = 'mybend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'hps_service',
+        'USER': 'hps_service',
+        'PASSWORD': 'hps_service',
+        'HOST': 'localhost',
+        'PORT': '5432'
     }
 }
 
@@ -133,3 +137,6 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, "static/")
+
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
