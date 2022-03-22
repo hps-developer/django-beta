@@ -27,7 +27,7 @@ class Cropper():
             r = requests.get(self.img_link, allow_redirects=True)
 
             #save url image
-            complate_name = os.path.join((settings.IMGC_PATH), fn)
+            complate_name = os.path.join((settings.IMGU_PATH), fn)
             #print(complate_name)
             open(complate_name, 'wb').write(r.content)
             imgcv = cv.imread(complate_name)
@@ -47,7 +47,7 @@ class Cropper():
             pos = res.xyxy[0][0][0:6].tolist()
         except:
             if is_url:
-                del_pic = os.path.join(settings.IMGC_PATH,fn)
+                del_pic = os.path.join(settings.IMGU_PATH,fn)
                 os.remove(del_pic)
             return "ERROR no detection"
             
@@ -56,7 +56,7 @@ class Cropper():
         #check confidence
         if pos[4] < 0.9:
             if is_url:
-                del_pic = os.path.join(settings.IMGC_PATH,fn)
+                del_pic = os.path.join(settings.IMGU_PATH,fn)
                 os.remove(del_pic)
             return 'ERROR low confidence'
         
@@ -74,8 +74,13 @@ class Cropper():
         rotated = imutils.rotate_bound(cimg, rotate_angle)
         
         #save
-        complate_path = os.path.join(settings.IMGC_PATH, fn)
+        complate_path = os.path.join(settings.IMG_PATH, fn)
         cv.imwrite(complate_path, rotated)
+
+        #delete url
+        if is_url:
+                del_pic = os.path.join(settings.IMGU_PATH,fn)
+                os.remove(del_pic)
      
             
         return complate_path

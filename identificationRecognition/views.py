@@ -24,10 +24,11 @@ from . import face_detection
 from . import idcropper
 import torch
 import os , os.path, sys
+import traceback
 
 
 def cropImageLocal(img):
-    model = torch.hub.load('ultralytics/yolov5', 'custom', path = 'id_rec/yolov5/runs/train/exp9/weights/best.pt', force_reload=False)
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path = 'id_rec/yolov5/runs/train/exp9/weights/best.pt', force_reload=True)
     get_image = idcropper.Cropper(img,model)
     linku =  get_image.crop()
     return linku
@@ -294,7 +295,8 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
             try:
                 status = cropImageLocal(str(image))
                 #print(status)
-            except:
+            except Exception: 
+                traceback.print_exc()
                 return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
             
             return Response({'code': '201', 'status': 'success', 'id_status': status})
