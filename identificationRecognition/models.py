@@ -11,5 +11,8 @@ class IdentificationRecognition(models.Model):
 class IdentificationList(models.Model):
     idList = JSONField()
 
+class IdentificationUrlOrName(models.Model):
+    urlOrName = models.CharField(max_length=250)
+
 
     

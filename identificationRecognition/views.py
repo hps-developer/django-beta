@@ -6,7 +6,8 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from .serializers import IdentificationRecognitionSerializer
 from .serializers import IdentificationListSerializer
-from .models import IdentificationRecognition, IdentificationList
+from .serializers import IdentificationUrlOrNameSerializer
+from .models import IdentificationRecognition, IdentificationList, IdentificationUrlOrName
 
 from typing import NoReturn
 
@@ -240,9 +241,7 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
 
     @action(methods=['post'], detail=False)
     def findTemplateInImage(self, request):
-        print(request.data)
         serializer = IdentificationRecognitionSerializer(data=request.data)
-        print(serializer)
         if serializer.is_valid():
             try:
                 template = request.data.get('template')
@@ -267,17 +266,15 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
 
     @action(methods=['post'], detail=False)
     def cropListImages(self, request):
-        print(request.data)
-        serializer = IdentificationListSerializer(data=request.data)
         try:
             imlist = request.data.get('idList')
             print(imlist)
         except:
-            return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading template and/or ID.'})
+            return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading IDList.'})
 
         try:
             status = CropListImageLocal(imlist)
-            print(status)
+            #print(status)
         except:
             return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
         
@@ -286,18 +283,17 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
 
     @action(methods=['post'], detail=False)
     def cropImage(self, request):
-        #print(request.data)
-        serializer = IdentificationRecognitionSerializer(data=request.data)
+        serializer = IdentificationUrlOrNameSerializer(data=request.data)
         print(serializer)
         if serializer.is_valid():
             try:
-                image = request.data.get('idImage')
+                image = request.data.get('urlOrName')
             except:
-                return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading template and/or ID.'})
+                return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading UrlOrName'})
             
             try:
                 status = cropImageLocal(str(image))
-                print(status)
+                #print(status)
             except:
                 return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
             
