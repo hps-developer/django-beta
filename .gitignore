@@ -131,3 +131,6 @@ dmypy.json
 decryptSEED128.class
 
 encryptSEED128.class
+
+main_image/
+images/
