@@ -133,3 +133,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, "static/")
+
+IMGC_PATH= os.path.join(BASE_DIR, "images/")
+IMG_PATH= os.path.join(BASE_DIR, "croppedImages/")
+IMGU_PATH= os.path.join(BASE_DIR, "urlImages/")

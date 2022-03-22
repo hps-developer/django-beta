@@ -1,12 +1,13 @@
 from __future__ import print_function
 from django.shortcuts import render
-
 # Create your views here.
 from rest_framework.decorators import action
 from rest_framework import viewsets
 from rest_framework.response import Response
 from .serializers import IdentificationRecognitionSerializer
-from .models import IdentificationRecognition
+from .serializers import IdentificationListSerializer
+from .serializers import IdentificationUrlOrNameSerializer
+from .models import IdentificationRecognition, IdentificationList, IdentificationUrlOrName
 
 from typing import NoReturn
 
@@ -16,19 +17,37 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 import cv2
-from skimage.filters import threshold_local
-import argparse
 import imutils
-from PIL import Image
-import PIL
 import requests
-from io import BytesIO
 from imageio import imread
-from . import face_detection
+from . import face_detection 
+from . import idcropper
+import torch
+import os , os.path, sys
+import traceback
+
+
+def cropImageLocal(img):
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path = 'id_rec/yolov5/runs/train/exp9/weights/best.pt', force_reload=True)
+    get_image = idcropper.Cropper(img,model)
+    linku =  get_image.crop()
+    return linku
+
+
+
+def CropListImageLocal(listu):
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path = 'id_rec/yolov5/runs/train/exp9/weights/best.pt', force_reload=False)
+    res = []
+    for name in listu:
+        get_image = idcropper.Cropper(name,model)
+        linku = get_image.crop()
+        res.append(linku)
+    return res
 
 class IdentificationRecognitionView(viewsets.ModelViewSet):
     queryset = IdentificationRecognition.objects.all()
     serializer_class = IdentificationRecognitionSerializer
+        
 
     def mse(self, imageA, imageB):
         
@@ -223,9 +242,7 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
 
     @action(methods=['post'], detail=False)
     def findTemplateInImage(self, request):
-        print(request.data)
         serializer = IdentificationRecognitionSerializer(data=request.data)
-        print(serializer)
         if serializer.is_valid():
             try:
                 template = request.data.get('template')
@@ -248,7 +265,45 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
             print(serializer.errors)
         return Response({'status': 'error', 'message': 'invalid request'})
 
+    @action(methods=['post'], detail=False)
+    def cropListImages(self, request):
+        try:
+            imlist = request.data.get('idList')
+            print(imlist)
+        except:
+            return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading IDList.'})
 
+        try:
+            status = CropListImageLocal(imlist)
+            #print(status)
+        except:
+            return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
+        
+        return Response({'code': '201', 'status': 'success', 'id_status': status})
+    
+
+    @action(methods=['post'], detail=False)
+    def cropImage(self, request):
+        serializer = IdentificationUrlOrNameSerializer(data=request.data)
+        print(serializer)
+        if serializer.is_valid():
+            try:
+                image = request.data.get('urlOrName')
+            except:
+                return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading UrlOrName'})
+            
+            try:
+                status = cropImageLocal(str(image))
+                #print(status)
+            except Exception: 
+                traceback.print_exc()
+                return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
+            
+            return Response({'code': '201', 'status': 'success', 'id_status': status})
+        else:
+            print(serializer.errors)
+        return Response({'status': 'error', 'message': 'invalid request'})
+    
 
     @action(methods=['post'], detail=False)
     def faceDetection(self, request):
