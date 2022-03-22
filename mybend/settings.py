@@ -140,3 +140,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, "static/")
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+IMGC_PATH= os.path.join(BASE_DIR, "images/")
+IMG_PATH= os.path.join(BASE_DIR, "croppedImages/")
+IMGU_PATH= os.path.join(BASE_DIR, "urlImages/")
