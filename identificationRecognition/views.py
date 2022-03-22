@@ -19,20 +19,30 @@ import imutils
 import requests
 from imageio import imread
 from . import face_detection 
-from .id_rec import idcropper
+from . import idcropper
 import torch
 import os , os.path, sys
 
+path = "C:/Users/khmun/hipay/django-beta/images/"
+
+def cropImageLocal(img):
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path = 'id_rec/yolov5/runs/train/exp9/weights/best.pt', force_reload=False)
+    get_image = idcropper.Cropper(img,model)
+    linku =  get_image.crop()
+    return linku
+
+def CropListImageLocal(listu):
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path = 'id_rec/yolov5/runs/train/exp9/weights/best.pt', force_reload=False)
+    res = []
+    for name in listu:
+        get_image = idcropper.Cropper(path + name.strip(),model)
+        linku = get_image.crop()
+        res.append(linku)
+    return res
 
 class IdentificationRecognitionView(viewsets.ModelViewSet):
     queryset = IdentificationRecognition.objects.all()
     serializer_class = IdentificationRecognitionSerializer
-
-    def cropImageLocal(img):
-        model = torch.hub.load('ultralytics/yolov5', 'custom', path = '/id_rec/yolov5/runs/train/exp9/weights/best.pt', force_reload=False)
-        test = idcropper.Cropper(img,model)
-        linku =  test.crop()
-        return linku
         
 
     def mse(self, imageA, imageB):
@@ -254,26 +264,47 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
         return Response({'status': 'error', 'message': 'invalid request'})
 
     @action(methods=['post'], detail=False)
-    def cropImage(self, request):
+    def cropListImages(self, request):
         print(request.data)
         serializer = IdentificationRecognitionSerializer(data=request.data)
-        print(serializer)
+        if serializer.is_valid():
+            try:
+                get_list = request.data.get('idImage').split(',')
+            except:
+                return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading template and/or ID.'})
+            
+            try:
+                status = CropListImageLocal(get_list)
+            except:
+                return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
+            
+            return Response({'code': '201', 'status': 'success', 'id_status': status})
+        else:
+            print(serializer.errors)
+        return Response({'status': 'error', 'message': 'invalid request'})
+    
+    @action(methods=['post'], detail=False)
+    def cropImage(self, request):
+        #print(request.data)
+        serializer = IdentificationRecognitionSerializer(data=request.data)
     
         if serializer.is_valid():
             try:
                 image = request.data.get('idImage')
             except:
                 return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading template and/or ID.'})
+            
             try:
-                status = self.cropImageLocal(image)
+                status = cropImageLocal(str(image))
+                print(status)
             except:
                 return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
+            
             return Response({'code': '201', 'status': 'success', 'id_status': status})
         else:
             print(serializer.errors)
         return Response({'status': 'error', 'message': 'invalid request'})
-
-
+    
 
     @action(methods=['post'], detail=False)
     def faceDetection(self, request):
