@@ -75,7 +75,8 @@ class Cropper():
         
         #save
         complate_path = os.path.join(settings.IMG_PATH, fn)
-        cv.imwrite(complate_path, rotated)
+        resized_image = cv.resize(rotated, (800, 500)) 
+        cv.imwrite(complate_path, resized_image)
 
         #delete url
         if is_url:
