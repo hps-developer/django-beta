@@ -49,7 +49,7 @@ class Cropper():
             if is_url:
                 del_pic = os.path.join(settings.IMGU_PATH,fn)
                 os.remove(del_pic)
-            return "ERROR no detection"
+            raise Exception("ERROR no detection")
             
         
         #print(pos)
@@ -58,7 +58,7 @@ class Cropper():
             if is_url:
                 del_pic = os.path.join(settings.IMGU_PATH,fn)
                 os.remove(del_pic)
-            return 'ERROR low confidence'
+            raise Exception("ERROR low confidence")
         
         #cal angle
         r_degree = int(pos[5])
