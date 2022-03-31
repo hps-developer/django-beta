@@ -21,19 +21,13 @@ import imutils
 import requests
 from imageio import imread
 from . import face_detection 
+from . import cropImage
 from . import idcropper
 import torch
 import os , os.path, sys
 import traceback
 
 
-def cropImageLocal(img):
-    model = torch.hub.load('ultralytics/yolov5', 'custom', path = 'id_rec/yolov5/runs/train/exp9/weights/best.pt', force_reload=False)
-    get_image = idcropper.Cropper(img,model)
-    linku =  get_image.crop()
-    del get_image
-    del model
-    return linku
 
 
 
@@ -294,7 +288,7 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
                 return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading UrlOrName'})
             
             try:
-                status = cropImageLocal(str(image))
+                status = cropImage.cropImageLocal(str(image))
                 #print(status)
             except Exception as e: 
                 return Response({'code': '102', 'status': 'error', 'message': str(e) })
