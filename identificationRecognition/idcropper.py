@@ -29,7 +29,9 @@ class Cropper():
             #save url image
             complate_name = os.path.join((settings.IMGU_PATH), fn)
             #print(complate_name)
-            open(complate_name, 'wb').write(r.content)
+            a = open(complate_name, 'wb')
+            a.write(r.content)
+            a.close()
             imgcv = cv.imread(complate_name)
             
             #pos, angle, confidence
@@ -49,6 +51,8 @@ class Cropper():
             if is_url:
                 del_pic = os.path.join(settings.IMGU_PATH,fn)
                 os.remove(del_pic)
+            del imgcv
+            del res
             raise Exception("ERROR no detection")
             
         
@@ -58,6 +62,8 @@ class Cropper():
             if is_url:
                 del_pic = os.path.join(settings.IMGU_PATH,fn)
                 os.remove(del_pic)
+            del imgcv
+            del res
             raise Exception("ERROR low confidence")
         
         #cal angle
@@ -69,7 +75,6 @@ class Cropper():
         #crop
         xmin,ymin,xmax,ymax = pos[0:4]
         cimg = imgcv[int(ymin):int(ymax), int(xmin):int(xmax)]
-        
         #rotate
         rotated = imutils.rotate_bound(cimg, rotate_angle)
         
@@ -83,5 +88,8 @@ class Cropper():
                 del_pic = os.path.join(settings.IMGU_PATH,fn)
                 os.remove(del_pic)
      
-            
+        del imgcv
+        del resized_image
+        del rotated
+        del cimg
         return complate_path
