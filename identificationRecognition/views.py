@@ -285,7 +285,6 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
     @action(methods=['post'], detail=False)
     def cropImage(self, request):
         serializer = IdentificationUrlOrNameSerializer(data=request.data)
-        print(serializer)
         if serializer.is_valid():
             try:
                 image = request.data.get('urlOrName')
