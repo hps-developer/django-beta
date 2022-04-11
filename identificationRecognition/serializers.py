@@ -3,6 +3,7 @@ from rest_framework import serializers
 from .models import IdentificationRecognition
 from .models import IdentificationList
 from .models import IdentificationUrlOrName
+from .models import Get_IdentificationData
 
 
 class IdentificationRecognitionSerializer(serializers.ModelSerializer):
@@ -19,3 +20,9 @@ class IdentificationUrlOrNameSerializer(serializers.ModelSerializer):
     class Meta:
         model = IdentificationUrlOrName
         fields = ['urlOrName']
+
+class Get_IdentificationDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Get_IdentificationData
+        fields = ['urlOrName']
+        

@@ -6,8 +6,9 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from .serializers import IdentificationRecognitionSerializer
 from .serializers import IdentificationListSerializer
+from .serializers import Get_IdentificationDataSerializer
 from .serializers import IdentificationUrlOrNameSerializer
-from .models import IdentificationRecognition, IdentificationList, IdentificationUrlOrName
+from .models import IdentificationRecognition, IdentificationList, IdentificationUrlOrName, Get_IdentificationData
 
 from typing import NoReturn
 
@@ -26,8 +27,28 @@ from . import idcropper
 import torch
 import os , os.path, sys
 import traceback
+from . import id_data
 
 
+def GetdataLocal(img):
+    res = id_data.Getu_data(str(img))
+    res_data = res.data()
+    return res_data
+
+def GetdataListLocal(listu):
+    res = []
+    for i in listu:
+        resu = id_data.Getu_data(str(i))
+        res_data = resu.data()
+        res.append(res_data)
+        
+    return res
+        
+def cropImageLocal(img):
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path = 'id_rec/yolov5/runs/train/exp9/weights/best.pt', force_reload=False)
+    get_image = idcropper.Cropper(img,model)
+    linku =  get_image.crop()
+    return linku
 
 
 
@@ -265,7 +286,7 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
     def cropListImages(self, request):
         try:
             imlist = request.data.get('idList')
-            print(imlist)
+            #print(imlist)
         except:
             return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading IDList.'})
 
@@ -297,6 +318,102 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
         
         return Response({'status': 'error', 'message': 'invalid request'})
     
+    @action(methods=['post'], detail=False)
+    def cropImageAndGetData(self, request):
+        serializer = IdentificationUrlOrNameSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                image = request.data.get('urlOrName')
+            except:
+                return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading UrlOrName'})
+            
+            try:
+                status = cropImage.cropImageLocal(str(image))
+                #print(status)
+            except Exception as e: 
+                return Response({'code': '102', 'status': 'error', 'message': str(e) })
+       
+            try:
+                res = GetdataLocal(str(status))
+                #print(status)
+            except Exception as e: 
+                return Response({'code': '103', 'status': 'error', 'message': str(e) })
+            if status == None:
+                return Response({'code': '104', 'status': 'error', 'message': 'Didn\'t find'})
+            else:
+                return Response({'code': '201', 'status': 'success', 'id_status': res})
+        
+        return Response({'status': 'error', 'message': 'invalid request'})
+    
+    
+    @action(methods=['post'], detail=False)
+    def GetData(self, request):
+        serializer = Get_IdentificationDataSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                image = request.data.get('urlOrName')
+            except:
+                return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading UrlOrName'})
+            
+            try:
+                status = GetdataLocal(image)
+                #print(status)
+            except Exception as e: 
+                return Response({'code': '102', 'status': 'error', 'message': str(e) })
+            if status == None:
+                return Response({'code': '103', 'status': 'error', 'message': 'Didn\'t find'})
+            else:
+                return Response({'code': '201', 'status': 'success', 'id_status': status})
+        
+        return Response({'status': 'error', 'message': 'invalid request'})
+    
+    
+    @action(methods=['post'], detail=False)
+    def cropListImagesAndGetData(self, request):
+        try:
+            imlist = request.data.get('idList')
+            #print(imlist)
+        except:
+            return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading IDList.'})
+
+        try:
+            status = CropListImageLocal(imlist)
+            #print(status)
+        except:
+            return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
+        try:
+            status = GetdataListLocal(imlist)
+            #print(status)
+        except:
+            return Response({'code': '103', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
+        
+        if status == None:
+            return Response({'code': '104', 'status': 'error', 'message': 'Didn\'t find'})
+        else:
+            return Response({'code': '201', 'status': 'success', 'id_status': status})
+    
+        
+        
+    @action(methods=['post'], detail=False)
+    def GetDataList(self, request):
+        try:
+            imlist = request.data.get('idList')
+            #print(imlist)
+        except:
+            return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading IDList.'})
+
+        try:
+            status = GetdataListLocal(imlist)
+            #print(status)
+        except:
+            return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
+        
+        if status == None:
+            return Response({'code': '103', 'status': 'error', 'message': 'Didn\'t find'})
+        else:
+            return Response({'code': '201', 'status': 'success', 'id_status': status})
+    
+
 
     @action(methods=['post'], detail=False)
     def faceDetection(self, request):
