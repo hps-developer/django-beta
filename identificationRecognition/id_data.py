@@ -65,10 +65,11 @@ def get_family_name_local(line,conf):
     res = ""
     for i in (test):
         i = i.strip(check)
-        if not i.isupper() and not i in list:
+        if not i.isupper() and not i.lower() in list:
             res+= i + ' '
     
     res_str = res.strip(check)
+    
     return res_str
 
 class Getu_data():
