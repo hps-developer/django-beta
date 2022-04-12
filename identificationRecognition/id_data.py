@@ -13,7 +13,7 @@ custom_config = r'-l eng+mon --psm 6'
 def imgToGray_local(img):
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     blur = cv.GaussianBlur(gray, (0,0), sigmaX=33, sigmaY=33)
-    divide = cv.divide(gray, blur, scale=150)
+    divide = cv.divide(gray, blur, scale=145)
     return divide
 
 def blurred_local(img):
@@ -56,7 +56,7 @@ def get_family_name_local(line,conf):
             
     check = 'qwertyuiop[]\|asdfghjkl;\'zxcvbnm,./QWERTYUIOP\{\}ASDFGHJKL:"ZXCVBNM<>?/ 1234567890-=`~!@#$%^&*()_+§'
     res_str = res_str.strip(check)
-    list = ['Хүйс', 'Регистрийн', 'дугаар', 'Төрсөн', 'он', 'сар','өдөр']
+    list = ['хүйс', 'регистрийн', 'дугаар', 'төрсөн', 'он', 'сар','өдөр']
     if(len(res_str) == 0): 
         return ''
     if res_str[0].islower():
