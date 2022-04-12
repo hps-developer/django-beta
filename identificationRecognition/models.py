@@ -14,6 +14,6 @@ class IdentificationList(models.Model):
 class IdentificationUrlOrName(models.Model):
     urlOrName = models.CharField(max_length=250)
 
-class Get_IdentificationData(models.Model):
+class GetIdentificationData(models.Model):
     urlOrName = models.CharField(max_length=250)
 

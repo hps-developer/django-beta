@@ -7,10 +7,9 @@ import requests
 from mybend import settings
 
 #pytesseract.pytesseract.tesseract_cmd = "C:/Program Files/Tesseract-OCR/tesseract.exe"
-custom_config = r'-l eng+mon --psm 6'
 
 #image enhancement
-def imgToGray_local(img):
+def img_to_gray_local(img):
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     blur = cv.GaussianBlur(gray, (0,0), sigmaX=33, sigmaY=33)
     divide = cv.divide(gray, blur, scale=145)
@@ -21,22 +20,22 @@ def blurred_local(img):
                        [-1, 9,-1],
                        [-1,-1,-1]])
     sharpened = cv.filter2D(img, -1, kernel)
-    res = imgToGray_local(sharpened)
+    res = img_to_gray_local(sharpened)
     return res
 
 #get data
 def get_data_local(img):
-    data = pytesseract.image_to_data(img, config = custom_config,output_type='data.frame')
+    data = pytesseract.image_to_data(img, config = settings.TESSERACT_CUSTOM_CONFIG,output_type='data.frame')
     return data
 
 #list to str
-def isNaN(num):
+def is_nan(num):
     return num!= num
 
 def list_to_string_local(list):
     res = ''
     for i in list:
-        if not isNaN(i):
+        if not is_nan(i):
             res += i +' '
     return res
 
@@ -76,7 +75,7 @@ def get_family_name_local(line,conf):
     
     return res_str
 
-class Getu_data():
+class Getudata():
     def __init__(self,img_link):
         self.img_link = img_link
 
@@ -90,22 +89,22 @@ class Getu_data():
         if is_url:
             r = requests.get(self.img_link, allow_redirects=True)
             #save url image
-            complate_name = os.path.join((settings.IMG_PATH), fn)
+            complate_name = os.path.join((settings.IMGU_PATH), fn)
             #print(complate_name)
             a = open(complate_name, 'wb')
             a.write(r.content)
             a.close()
             res = self.image_to_text(complate_name)
-            del_pic = os.path.join(settings.IMG_PATH+'/'+str(fn))
+            del_pic = os.path.join(settings.IMGU_PATH+'/'+str(fn))
             os.remove(del_pic)
         else:
-            res = self.image_to_text(str(settings.IMG_PATH)+'/'+str(fn))
+            res = self.image_to_text(str(settings.IMG_PATH)+str(fn))
         return res
          
     def image_to_text(self, link):
         try:
             img = cv.imread(link)
-            id_img = imgToGray_local(img)
+            id_img = img_to_gray_local(img)
             data = get_data_local(id_img)
             data = data[data.conf != -1]
             lines = data.groupby('line_num')['text'].apply(list)
