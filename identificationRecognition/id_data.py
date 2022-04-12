@@ -95,7 +95,7 @@ class Getudata():
             a.write(r.content)
             a.close()
             res = self.image_to_text(complate_name)
-            del_pic = os.path.join(settings.IMGU_PATH+'/'+str(fn))
+            del_pic = os.path.join(complate_name)
             os.remove(del_pic)
         else:
             res = self.image_to_text(str(settings.IMG_PATH)+str(fn))
