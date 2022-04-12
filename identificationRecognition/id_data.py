@@ -30,10 +30,14 @@ def get_data_local(img):
     return data
 
 #list to str
+def isNaN(num):
+    return num!= num
+
 def list_to_string_local(list):
     res = ''
     for i in list:
-        res += i +' '
+        if not isNaN(i):
+            res += i +' '
     return res
 
 #find family name -> line
