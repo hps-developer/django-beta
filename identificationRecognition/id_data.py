@@ -6,7 +6,7 @@ from pathlib import Path
 import requests
 from mybend import settings
 
-pytesseract.pytesseract.tesseract_cmd = "C:/Program Files/Tesseract-OCR/tesseract.exe"
+#pytesseract.pytesseract.tesseract_cmd = "C:/Program Files/Tesseract-OCR/tesseract.exe"
 custom_config = r'-l eng+mon --psm 6'
 
 #image enhancement
@@ -60,7 +60,7 @@ def get_family_name_local(line,conf):
             
     check = 'qwertyuiop[]\|asdfghjkl;\'zxcvbnm,./QWERTYUIOP\{\}ASDFGHJKL:"ZXCVBNM<>?/ 1234567890-=`~!@#$%^&*()_+§'
     res_str = res_str.strip(check)
-    list = ['Хүйс', 'Регистрийн', 'дугаар', 'Төрсөн', 'он', 'сар','өдөр']
+    list = ['хүйс', 'регистрийн', 'дугаар', 'төрсөн', 'он', 'сар','өдөр']
     if(len(res_str) == 0): 
         return ''
     if res_str[0].islower():
@@ -69,7 +69,7 @@ def get_family_name_local(line,conf):
     res = ""
     for i in (test):
         i = i.strip(check)
-        if not i.isupper() and not i in list:
+        if not i.isupper() and not i.lower() in list:
             res+= i + ' '
     
     res_str = res.strip(check)
