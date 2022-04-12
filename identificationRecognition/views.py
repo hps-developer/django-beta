@@ -8,7 +8,7 @@ from .serializers import IdentificationRecognitionSerializer
 from .serializers import IdentificationListSerializer
 from .serializers import Get_IdentificationDataSerializer
 from .serializers import IdentificationUrlOrNameSerializer
-from .models import IdentificationRecognition, IdentificationList, IdentificationUrlOrName, Get_IdentificationData
+from .models import IdentificationRecognition, IdentificationList, IdentificationUrlOrName, GetIdentificationData
 
 from typing import NoReturn
 
@@ -30,15 +30,15 @@ import traceback
 from . import id_data
 
 
-def GetdataLocal(img):
-    res = id_data.Getu_data(str(img))
+def getDataLocal(img):
+    res = id_data.Getudata(str(img))
     res_data = res.data()
     return res_data
 
-def GetdataListLocal(listu):
+def getDataListLocal(listu):
     res = []
     for i in listu:
-        resu = id_data.Getu_data(str(i))
+        resu = id_data.Getudata(str(i))
         res_data = resu.data()
         res.append(res_data)
         
@@ -326,7 +326,7 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
                 return Response({'code': '102', 'status': 'error', 'message': str(e) })
        
             try:
-                res = GetdataLocal(str(status))
+                res = getDataLocal(str(status))
                 #print(status)
             except Exception as e: 
                 return Response({'code': '103', 'status': 'error', 'message': str(e) })
@@ -339,7 +339,7 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
     
     
     @action(methods=['post'], detail=False)
-    def GetData(self, request):
+    def getData(self, request):
         serializer = Get_IdentificationDataSerializer(data=request.data)
         if serializer.is_valid():
             try:
@@ -348,7 +348,7 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
                 return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading UrlOrName'})
             
             try:
-                status = GetdataLocal(image)
+                status = getDataLocal(image)
                 #print(status)
             except Exception as e: 
                 return Response({'code': '102', 'status': 'error', 'message': str(e) })
@@ -374,7 +374,7 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
         except:
             return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
         try:
-            status = GetdataListLocal(imlist)
+            status = getDataListLocal(imlist)
             #print(status)
         except:
             return Response({'code': '103', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
@@ -387,7 +387,7 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
         
         
     @action(methods=['post'], detail=False)
-    def GetDataList(self, request):
+    def getDataList(self, request):
         try:
             imlist = request.data.get('idList')
             #print(imlist)
@@ -395,7 +395,7 @@ class IdentificationRecognitionView(viewsets.ModelViewSet):
             return Response({'code': '101', 'status': 'error', 'message': 'Error occurred while reading IDList.'})
 
         try:
-            status = GetdataListLocal(imlist)
+            status = getDataListLocal(imlist)
             #print(status)
         except:
             return Response({'code': '102', 'status': 'error', 'message': 'Error occurred while processing images. (INAVLID IMAGE)'})
