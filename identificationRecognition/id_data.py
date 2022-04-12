@@ -13,7 +13,7 @@ custom_config = r'-l eng+mon --psm 6'
 def imgToGray_local(img):
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     blur = cv.GaussianBlur(gray, (0,0), sigmaX=33, sigmaY=33)
-    divide = cv.divide(gray, blur, scale=150)
+    divide = cv.divide(gray, blur, scale=145)
     return divide
 
 def blurred_local(img):
@@ -73,6 +73,7 @@ def get_family_name_local(line,conf):
             res+= i + ' '
     
     res_str = res.strip(check)
+    
     return res_str
 
 class Getu_data():
