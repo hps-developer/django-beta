@@ -6,7 +6,7 @@ from pathlib import Path
 import requests
 from mybend import settings
 
-pytesseract.pytesseract.tesseract_cmd = "C:/Program Files/Tesseract-OCR/tesseract.exe"
+#pytesseract.pytesseract.tesseract_cmd = "C:/Program Files/Tesseract-OCR/tesseract.exe"
 
 #image enhancement
 def img_to_gray_local(img):
