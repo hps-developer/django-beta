@@ -89,15 +89,14 @@ class Getu_data():
         #check url
         if is_url:
             r = requests.get(self.img_link, allow_redirects=True)
-
             #save url image
             complate_name = os.path.join((settings.IMG_PATH), fn)
             #print(complate_name)
             a = open(complate_name, 'wb')
             a.write(r.content)
             a.close()
-            res = self.image_to_text(settings.IMG_PATH+'/'+complate_name)
-            del_pic = os.path.join(settings.IMG_PATH+'/'+fn)
+            res = self.image_to_text(complate_name)
+            del_pic = os.path.join(settings.IMG_PATH+'/'+str(fn))
             os.remove(del_pic)
         else:
             res = self.image_to_text(str(settings.IMG_PATH)+'/'+str(fn))
