@@ -1,0 +1,5 @@
+[Unit]
+Description=uWSGI Service
+
+[Service]
+ExecStart=chagi-env/bin/uwsgi --ini hps-django/django-beta/mybend_uwsgi.ini
